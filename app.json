@@ -5,23 +5,33 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+    "extra": {
+      "eas": {
+        "projectId": "040d11b4-94c9-471b-b0e1-233bd69d0b57"
+      },
+      "googleMapsApiKey": "AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw"
     },
-    "ios": {
-      "supportsTablet": true
-    },
+    "owner": "melvinsagnoy",
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "package": "com.melvinsagnoy.ROADGUARD",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw"
+        }
       }
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "ios": {
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show your position on the map.",
+        "GMSApiKey": "AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw"
+      }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

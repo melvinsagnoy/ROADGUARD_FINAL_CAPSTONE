@@ -1,20 +1,19 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { Provider as PaperProvider, DefaultTheme, DarkTheme } from 'react-native-paper';
+import AuthNavigator from './navigation/AuthNavigator';
+import { useColorScheme } from 'react-native'; // Import useColorScheme
 
-export default function App() {
+const App = () => {
+  const colorScheme = useColorScheme(); // Get the device color scheme
+
+  // Set the theme based on the detected color scheme
+  const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <PaperProvider theme={theme}>
+      <AuthNavigator />
+    </PaperProvider>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default App;
