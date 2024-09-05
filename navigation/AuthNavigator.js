@@ -24,6 +24,7 @@ import ProfileUpdateScreen from '../screens/ProfileUpdateScreen';
 import ChatListScreen from '../screens/ChatListScreen';
 import ChatScreen from '../screens/ChatScreen';
 import PostDetail from '../screens/PostDetail';
+import DrivingModeScreen from '../screens/DrivingModeScreen';
 
 const Stack = createStackNavigator();
 
@@ -147,6 +148,11 @@ const AuthNavigator = () => {
         <Stack.Screen
           name="PostDetail"
           component={PostDetail}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="DrivingModeScreen"
+          component={DrivingModeScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

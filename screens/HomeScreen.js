@@ -18,12 +18,12 @@ import { auth, firestore } from '../firebaseConfig';
 import CreatePostModal from './CreatePostModal';
 import { useFonts } from 'expo-font';
 import { useTheme } from 'react-native-paper';
-import { collection, getDocs, query, orderBy, doc, getDoc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore'; // Firestore
 import CommentModal from './CommentModal'; // Import the CommentModal component
 import EditPostModal from './EditPostModal'; 
 import { ActivityIndicator } from 'react-native';
 import { formatDistanceToNow } from 'date-fns';
-import { ref, onValue, update, get, child, push, set, remove } from 'firebase/database';
+import { ref, onValue, set, push, update, get } from 'firebase/database'; // Realtime Database
 import { database } from '../firebaseConfig';
 import { format } from 'date-fns';
 import { BackHandler } from 'react-native';
@@ -353,8 +353,8 @@ const handleVote = async (postId, voteType) => {
   const sanitizedEmail = sanitizeKey(userEmail);
 
   try {
-    const postSnapshot = await get(postRef);
-    const postData = postSnapshot.val();
+    const snapshot = await get(postRef); // Fetch the data once
+    const postData = snapshot.val();
 
     if (!postData) {
       throw new Error('Post does not exist');
@@ -428,8 +428,6 @@ const handleVote = async (postId, voteType) => {
     setIsLoading(false); // End loading
   }
 };
-
-
 
 
 const handleMenuPress = (postId) => {

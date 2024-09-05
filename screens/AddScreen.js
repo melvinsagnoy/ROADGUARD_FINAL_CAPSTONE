@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Keyboard, Linking, Image } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Keyboard, Image } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { getDatabase, ref, onValue, get } from 'firebase/database';
 
-const AddScreen = ({ navigation }) => { // Add navigation prop
+const AddScreen = ({ navigation }) => {
   const [location, setLocation] = useState(null);
   const [address, setAddress] = useState('Fetching address...');
   const [destinationAddress, setDestinationAddress] = useState('Destination address will appear here...');
@@ -14,6 +15,7 @@ const AddScreen = ({ navigation }) => { // Add navigation prop
   const [distance, setDistance] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [searchVisible, setSearchVisible] = useState(false);
+  const [postsWithPins, setPostsWithPins] = useState([]);
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -36,8 +38,8 @@ const AddScreen = ({ navigation }) => { // Add navigation prop
           setLocation({
             latitude,
             longitude,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
+            latitudeDelta: 0.005,  // Reduced for more zoom
+            longitudeDelta: 0.0025, // Reduced for more zoom
           });
 
           const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw';
@@ -61,6 +63,53 @@ const AddScreen = ({ navigation }) => { // Add navigation prop
       };
     })();
   }, []);
+
+
+
+  useEffect(() => {
+    (async () => {
+      // Existing location logic here...
+      // Fetch posts and pins
+      fetchPostsWithPins();
+    })();
+  }, []);
+
+  const fetchPostsWithPins = async () => {
+  const db = getDatabase(); // Initialize Firebase Realtime Database
+  const postsRef = ref(db, 'posts'); // Reference to the posts node
+
+  onValue(postsRef, async (snapshot) => {
+    const posts = snapshot.val();
+    if (!posts) return;
+
+    const postsArray = Object.keys(posts).map(key => ({ id: key, ...posts[key] }));
+    const filteredPosts = postsArray.filter(post => post.upvotes === 2);
+
+    // Fetch location for each post with 2 upvotes
+    const fetchLocations = filteredPosts.map(async (post) => {
+      const locationRef = ref(db, `posts/${post.id}/location`); // Correct path to location
+      const locationSnapshot = await get(locationRef);
+      const locationData = locationSnapshot.val();
+      return {
+        ...post,
+        location: locationData,
+      };
+    });
+
+    try {
+      const pinnedPosts = await Promise.all(fetchLocations);
+      setPostsWithPins(pinnedPosts);
+    } catch (error) {
+      console.error("Error fetching post locations:", error);
+    }
+  });
+};
+
+  useEffect(() => {
+    if (mapRef.current && location) {
+      mapRef.current.animateToRegion(location, 1000);
+    }
+  }, [location]);
 
   const handleDestinationSelect = async (data, details) => {
     const destLocation = details.geometry.location;
@@ -126,7 +175,7 @@ const AddScreen = ({ navigation }) => { // Add navigation prop
     setSearchVisible(true);
   };
 
-  const handleLocationPress = () => {
+   const handleLocationPress = () => {
     if (mapRef.current && location) {
       mapRef.current.animateToRegion(location, 1000);
     }
@@ -141,8 +190,11 @@ const AddScreen = ({ navigation }) => { // Add navigation prop
 
   const handleDrivingModePress = () => {
     if (destinationCoords && location) {
-      const url = `https://www.google.com/maps/dir/?api=1&origin=${location.latitude},${location.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&travelmode=driving`;
-      Linking.openURL(url).catch(err => console.error('Error opening URL:', err));
+      navigation.navigate('DrivingModeScreen', {
+        location,
+        destinationCoords,
+        destinationAddress,
+      });
     } else {
       alert('Please set a destination first');
     }
@@ -162,7 +214,7 @@ const AddScreen = ({ navigation }) => { // Add navigation prop
             <Marker coordinate={location} title="You are here" description={address}>
               <Image
                 source={require('../assets/map_user.png')}
-                style={{ width: 40, height:50 }} // Adjust the size here
+                style={{ width: 40, height: 50 }}
                 resizeMode="stretch"
               />
             </Marker>
@@ -175,6 +227,22 @@ const AddScreen = ({ navigation }) => { // Add navigation prop
               strokeColor="#E0C55B"
             />
           )}
+          {postsWithPins.map(post => (
+            post.location && (
+              <Marker
+                key={post.id}
+                coordinate={{ latitude: post.location.latitude, longitude: post.location.longitude }}
+                title={post.title}
+                description={`Upvotes: ${post.upvotes}`}
+              >
+                <Image
+                  source={require('../assets/hazard_icon.png')}  // Adjust path as needed
+                  style={{ width: 30, height: 30 }}
+                  resizeMode="stretch"
+                />
+              </Marker>
+            )
+          ))}
         </MapView>
         <View style={styles.infoContainer}>
           <View style={styles.locationContainer}>
@@ -206,8 +274,8 @@ const AddScreen = ({ navigation }) => { // Add navigation prop
               query={{
                 key: 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw',
                 language: 'en',
-                location: { lat: 10.3157, lng: 123.8854 }, // Coordinates of Cebu City
-                radius: 10000, // Search within 10 km radius
+                location: { lat: 10.3157, lng: 123.8854 },
+                radius: 10000,
               }}
               styles={{
                 container: styles.autocompleteContainer,
@@ -554,6 +622,7 @@ const styles = StyleSheet.create({
   listView: {
     marginTop: 5,
   },
+  
 });
 
 export default AddScreen;
