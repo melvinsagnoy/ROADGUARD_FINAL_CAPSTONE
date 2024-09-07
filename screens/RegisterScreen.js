@@ -1,25 +1,27 @@
 import React, { useState, useRef } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, Animated, Image } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, Animated } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, firestore } from '../firebaseConfig';
 import Icon from 'react-native-vector-icons/Ionicons';
-import CombinedModal from './CombinedModal'; // Updated import
+import CombinedModal from './CombinedModal';
+import PhoneNumberModal from './PhoneNumberModal';
 import { doc, setDoc } from 'firebase/firestore';
 
 const RegisterScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [showCombinedModal, setShowCombinedModal] = useState(false);
+  const [showPhoneNumberModal, setShowPhoneNumberModal] = useState(false);
+  const [userEmail, setUserEmail] = useState(null);
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   const handleRegisterButtonPress = async () => {
-    if (!email || !phoneNumber || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword) {
       Alert.alert('Missing Fields', 'Please fill in all fields.');
       return;
     }
@@ -30,7 +32,7 @@ const RegisterScreen = ({ navigation }) => {
     }
 
     if (!termsAccepted) {
-      Alert.alert('Agreement Required', 'You must agree to the terms and privacy policy.');
+      setShowCombinedModal(true);
       return;
     }
 
@@ -46,22 +48,22 @@ const RegisterScreen = ({ navigation }) => {
 
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      setUserEmail(email);
 
       console.log('User registered with email:', email);
 
-      // Save phone number to Firestore
-      await setDoc(doc(firestore, 'users', user.uid), {
-        email: email,
-        phoneNumber: phoneNumber,
-        needsProfileUpdate: true, // Add this field to indicate profile update is required
-      });
+      // Use email directly as document ID
+      const docRef = doc(firestore, 'users', email);
 
-      console.log('Phone number saved:', phoneNumber);
+      // Set initial user data
+      await setDoc(docRef, {
+        email: email,
+        needsProfileUpdate: true,
+      });
 
       setLoading(false);
       rotateAnim.stopAnimation();
-      Alert.alert('Registration Successful', 'You have registered successfully!');
-      navigation.navigate('Passcode'); // Navigate to ProfileUpdateScreen
+      setShowPhoneNumberModal(true);
     } catch (error) {
       setLoading(false);
       rotateAnim.stopAnimation();
@@ -70,9 +72,33 @@ const RegisterScreen = ({ navigation }) => {
     }
   };
 
-  const handleAgree = () => {
+  const handleTermsAgree = () => {
     setTermsAccepted(true);
-    setShowModal(false);
+    setShowCombinedModal(false);
+  };
+
+  const handleCombinedModalClose = () => {
+    setShowCombinedModal(false);
+  };
+
+  const handlePhoneNumberModalClose = async (phoneNumber) => {
+    setShowPhoneNumberModal(false);
+    if (phoneNumber) {
+      try {
+        const docRef = doc(firestore, 'users', userEmail);
+
+        // Update Firestore with phone number
+        await setDoc(docRef, {
+          phoneNumber: phoneNumber,
+        }, { merge: true });
+
+        console.log('Phone number saved successfully.');
+      } catch (error) {
+        console.error('Error updating phone number:', error);
+        Alert.alert('Update Error', error.message);
+      }
+    }
+    navigation.navigate('Passcode');
   };
 
   const handleCheckboxPress = () => {
@@ -81,13 +107,6 @@ const RegisterScreen = ({ navigation }) => {
       return;
     }
     setTermsAccepted(!termsAccepted);
-  };
-
-  const handlePhoneNumberChange = (text) => {
-    const cleanedText = text.replace(/[^0-9]/g, '');
-    if (cleanedText.length <= 11) {
-      setPhoneNumber(cleanedText);
-    }
   };
 
   const rotateInterpolate = rotateAnim.interpolate({
@@ -104,14 +123,6 @@ const RegisterScreen = ({ navigation }) => {
         value={email}
         keyboardType="email-address"
         autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Phone Number"
-        onChangeText={handlePhoneNumberChange}
-        value={phoneNumber}
-        keyboardType="numeric"
-        maxLength={11}
       />
       <View style={styles.passwordContainer}>
         <TextInput
@@ -149,12 +160,11 @@ const RegisterScreen = ({ navigation }) => {
         <TouchableOpacity
           style={[styles.customCheckbox, termsAccepted && styles.customCheckboxChecked]}
           onPress={handleCheckboxPress}
-          disabled={!termsAccepted && !showModal}
         >
           {termsAccepted && <Icon name="checkmark" size={20} color="#FFF" />}
         </TouchableOpacity>
         <Text style={styles.agreementText}>
-          I agree to the <Text style={styles.link} onPress={() => setShowModal(true)}>Terms and Conditions</Text> and <Text style={styles.link} onPress={() => setShowModal(true)}>Privacy Policy</Text>.
+          I agree to the <Text style={styles.link} onPress={() => setShowCombinedModal(true)}>Terms and Conditions</Text> and <Text style={styles.link} onPress={() => setShowCombinedModal(true)}>Privacy Policy</Text>.
         </Text>
       </View>
       <TouchableOpacity
@@ -163,21 +173,24 @@ const RegisterScreen = ({ navigation }) => {
         disabled={loading}
       >
         {loading ? (
-          <Animated.View style={[styles.loadingContainer, { transform: [{ rotate: rotateInterpolate }] }]}>
-            <Image source={require('../assets/tire.png')} style={styles.loadingImage} />
+          <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
+            <Icon name="reload" size={24} color="#FFF" />
           </Animated.View>
         ) : (
           <Text style={styles.buttonText}>Register</Text>
         )}
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.loginText}>Already have an account? Login</Text>
-      </TouchableOpacity>
-      {showModal && (
-        <CombinedModal
-          visible={showModal}
-          onClose={() => setShowModal(false)}
-          onAgree={handleAgree}
+
+      <CombinedModal
+        visible={showCombinedModal}
+        onAgree={handleTermsAgree}
+        onClose={handleCombinedModalClose}
+      />
+      {userEmail && (
+        <PhoneNumberModal
+          visible={showPhoneNumberModal}
+          onClose={handlePhoneNumberModalClose}
+          email={userEmail}
         />
       )}
     </View>
@@ -255,7 +268,7 @@ const styles = StyleSheet.create({
   customCheckbox: {
     width: 24,
     height: 24,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#E0C55B',
     borderRadius: 4,
     justifyContent: 'center',
@@ -266,21 +279,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0C55B',
   },
   agreementText: {
-    fontSize: 16,
     color: '#FFF',
+    fontSize: 16,
   },
   link: {
     color: '#E0C55B',
-  },
-  loadingContainer: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingImage: {
-    width: 50,
-    height: 50,
+    textDecorationLine: 'underline',
   },
 });
 

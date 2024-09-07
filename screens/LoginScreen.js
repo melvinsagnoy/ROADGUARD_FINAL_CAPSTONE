@@ -5,7 +5,7 @@ import * as yup from 'yup';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
 import { firestore } from '../firebaseConfig';
 
 const loginValidationSchema = yup.object().shape({
@@ -20,53 +20,60 @@ const LoginScreen = ({ navigation }) => {
   });
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  const handleLogin = async (values) => {
-    setLoading(true);
-    Animated.loop(
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      })
-    ).start();
 
-    const auth = getAuth();
+const handleLogin = async (emailOrPhone, password) => {
+  console.log('emailOrPhone:', emailOrPhone); // Log the value of emailOrPhone
+  setLoading(true);
 
-    try {
-      let userCredential;
-      if (values.emailOrPhone.includes('@')) {
-        // Login with email
-        userCredential = await signInWithEmailAndPassword(auth, values.emailOrPhone, values.password);
-      } else {
-        // Login with phone number
-        const phoneNumber = values.emailOrPhone.trim(); // Remove any extra spaces
-        
-        // Query Firestore for the document where the phoneNumber matches
-        const q = query(collection(firestore, 'users'), where('phoneNumber', '==', phoneNumber));
-        const querySnapshot = await getDocs(q);
+  const auth = getAuth();
+  const db = getFirestore(); // Get Firestore instance
 
-        if (querySnapshot.empty) {
-          throw new Error('No user found with this phone number.');
-        }
+  try {
+    let userCredential;
+    let userEmail = emailOrPhone;
 
-        let userData;
-        querySnapshot.forEach((doc) => {
-          userData = doc.data(); // Assuming only one document matches the phone number
-        });
+    if (typeof emailOrPhone === 'string' && emailOrPhone.includes('@')) {
+      // Login with email
+      userCredential = await signInWithEmailAndPassword(auth, emailOrPhone, password);
+    } else if (typeof emailOrPhone === 'string') {
+      // Look up phone number in Firestore
+      console.log('Looking up phone number:', emailOrPhone); // Log the phone number being looked up
 
-        // If the phone number exists in Firestore, log in with email/password
-        userCredential = await signInWithEmailAndPassword(auth, userData.email, values.password);
+      // Get the users collection reference
+      const usersCollectionRef = collection(db, 'users');
+
+      // Create a query to find the document with the matching phone number
+      const q = query(usersCollectionRef, where('phoneNumber', '==', emailOrPhone));
+
+      // Execute the query
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        throw new Error('No user found with this phone number.');
       }
 
-      await AsyncStorage.setItem('user', JSON.stringify({ email: values.emailOrPhone }));
-      console.log('User data saved:', { email: values.emailOrPhone });
-      setLoading(false);
-      navigation.navigate('VerificationOptions');
-    } catch (error) {
-      setLoading(false);
-      Alert.alert('Login Error', error.message);
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      userEmail = userData.email;
+
+      // Log the retrieved email
+      console.log('Retrieved email:', userEmail);
+
+      // Login with the retrieved email
+      userCredential = await signInWithEmailAndPassword(auth, userEmail, password);
+    } else {
+      throw new Error('Invalid input.');
     }
-  };
+
+    // Successfully logged in
+    console.log('User logged in:', userCredential.user.email);
+    setLoading(false);
+    navigation.navigate('VerificationOptions');
+  } catch (error) {
+    setLoading(false);
+    Alert.alert('Login Error', error.message);
+  }
+}; 
 
   const rotateInterpolate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -81,10 +88,10 @@ const LoginScreen = ({ navigation }) => {
     <View style={styles.container}>
       <View style={styles.form}>
         <Formik
-          validationSchema={loginValidationSchema}
-          initialValues={{ emailOrPhone: '', password: '' }}
-          onSubmit={handleLogin}
-        >
+            validationSchema={loginValidationSchema}
+            initialValues={{ emailOrPhone: '', password: '' }}
+            onSubmit={(values) => handleLogin(values.emailOrPhone, values.password)}
+          >
           {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
             <>
               <View style={styles.header}>

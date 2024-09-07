@@ -18,12 +18,12 @@ import { auth, firestore } from '../firebaseConfig';
 import CreatePostModal from './CreatePostModal';
 import { useFonts } from 'expo-font';
 import { useTheme } from 'react-native-paper';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore'; // Firestore
+import { collection, getDocs, query, orderBy, doc, getDoc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import CommentModal from './CommentModal'; // Import the CommentModal component
 import EditPostModal from './EditPostModal'; 
 import { ActivityIndicator } from 'react-native';
 import { formatDistanceToNow } from 'date-fns';
-import { ref, onValue, set, push, update, get } from 'firebase/database'; // Realtime Database
+import { ref, onValue, update, get, child, push, set, remove } from 'firebase/database';
 import { database } from '../firebaseConfig';
 import { format } from 'date-fns';
 import { BackHandler } from 'react-native';
@@ -220,51 +220,17 @@ const submitComment = async () => {
   }
 };
 
-
-const getAddressFromCoordinates = async (latitude, longitude) => {
-  const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Replace with your API key
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`;
-
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data.status === 'OK' && data.results.length > 0) {
-      return data.results[0].formatted_address;
-    } else {
-      throw new Error('Unable to get address from coordinates');
-    }
-  } catch (error) {
-    console.error('Error fetching address:', error);
-    return 'Address not available';
-  }
-};
-
-
   const fetchAllPosts = async () => {
   try {
     const postsRef = ref(database, 'posts');
-    onValue(postsRef, async (snapshot) => {
+    onValue(postsRef, (snapshot) => {
       const postsData = snapshot.val();
       if (postsData) {
-        let postsArray = await Promise.all(
-          Object.keys(postsData).map(async (key) => {
-            const post = {
-              id: key,
-              ...postsData[key],
-              photoURL: postsData[key]?.photoURL || 'https://via.placeholder.com/50',
-            };
-
-            // Convert coordinates to address
-            if (post.location && post.location.latitude && post.location.longitude) {
-              post.address = await getAddressFromCoordinates(post.location.latitude, post.location.longitude);
-            } else {
-              post.address = 'Address not available';
-            }
-
-            return post;
-          })
-        );
+        let postsArray = Object.keys(postsData).map(key => ({
+          id: key,
+          ...postsData[key],
+          photoURL: postsData[key]?.photoURL || 'https://via.placeholder.com/50',
+        }));
 
         // Sort posts based on selected filter
         if (filter === 'newest') {
@@ -282,7 +248,6 @@ const getAddressFromCoordinates = async (latitude, longitude) => {
     console.error('Error fetching posts:', error);
   }
 };
-
 
 const handleFilterChange = (selectedFilter) => {
   setFilter(selectedFilter);
@@ -353,8 +318,8 @@ const handleVote = async (postId, voteType) => {
   const sanitizedEmail = sanitizeKey(userEmail);
 
   try {
-    const snapshot = await get(postRef); // Fetch the data once
-    const postData = snapshot.val();
+    const postSnapshot = await get(postRef);
+    const postData = postSnapshot.val();
 
     if (!postData) {
       throw new Error('Post does not exist');
@@ -415,12 +380,10 @@ const handleVote = async (postId, voteType) => {
 
     // Update local state
     setPosts((prevPosts) =>
-      prevPosts.map((post) =>
-        post.id === postId
-          ? { ...post, upvotes: updatedUpvotes, downvotes: updatedDownvotes }
-          : post
-      )
-    );
+  prevPosts.map((post) =>
+    post.id === selectedPostId ? { ...post, ...editedContent } : post
+  )
+);
 
   } catch (error) {
     console.error('Error handling vote:', error);
@@ -428,6 +391,8 @@ const handleVote = async (postId, voteType) => {
     setIsLoading(false); // End loading
   }
 };
+
+
 
 
 const handleMenuPress = (postId) => {
@@ -481,9 +446,9 @@ const handleDeletePost = async (postId) => {
           <Text style={[styles.feedAuthor, { color: colors.text }]}>
             {post.displayName}
           </Text>
-          {post.address ? (
+          {post.location ? (
             <Text style={[styles.feedLocation, { color: colors.text }]}>
-              Location: {post.address}
+              Location: {post.location.latitude}, {post.location.longitude}
             </Text>
           ) : (
             <Text style={[styles.feedLocation, { color: colors.text }]}>

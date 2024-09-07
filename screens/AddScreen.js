@@ -65,6 +65,26 @@ const AddScreen = ({ navigation }) => {
   }, []);
 
 
+  useEffect(() => {
+  if (mapRef.current && location) {
+    // Define a zoomed-out region
+    const zoomedOutRegion = {
+      ...location,
+      latitudeDelta: 0.2, // More zoomed out
+      longitudeDelta: 0.2,
+    };
+
+    // Animate the map to the zoomed-out region first
+    mapRef.current.animateToRegion(zoomedOutRegion, 1000); // Zoom out animation for 1 second
+
+    // After a short delay, zoom into the user's location
+    setTimeout(() => {
+      if (mapRef.current) {  // Check if mapRef is still valid
+        mapRef.current.animateToRegion(location, 1500); // Zoom into user's location after delay
+      }
+    }, 1000); // Adjust the delay to match the zoom-out animation timing
+  }
+}, [location]);
 
   useEffect(() => {
     (async () => {
@@ -204,46 +224,80 @@ const AddScreen = ({ navigation }) => {
     <TouchableWithoutFeedback onPress={handleClickOutside}>
       <View style={styles.container}>
         <MapView
-          ref={mapRef}
-          provider={PROVIDER_GOOGLE}
-          style={styles.map}
-          region={location}
-          customMapStyle={mapStyle}
-        >
-          {location && (
-            <Marker coordinate={location} title="You are here" description={address}>
-              <Image
-                source={require('../assets/map_user.png')}
-                style={{ width: 40, height: 50 }}
-                resizeMode="stretch"
-              />
-            </Marker>
-          )}
-          {destinationCoords && <Marker coordinate={destinationCoords} />}
-          {routeCoordinates.length > 0 && (
-            <Polyline
-              coordinates={routeCoordinates}
-              strokeWidth={4}
-              strokeColor="#E0C55B"
-            />
-          )}
-          {postsWithPins.map(post => (
-            post.location && (
-              <Marker
-                key={post.id}
-                coordinate={{ latitude: post.location.latitude, longitude: post.location.longitude }}
-                title={post.title}
-                description={`Upvotes: ${post.upvotes}`}
-              >
+            ref={mapRef}
+            provider={PROVIDER_GOOGLE}
+            style={styles.map}
+            region={location}
+            customMapStyle={mapStyle}
+          >
+            {location && (
+              <Marker coordinate={location} title="You are here" description={address}>
                 <Image
-                  source={require('../assets/hazard_icon.png')}  // Adjust path as needed
-                  style={{ width: 30, height: 30 }}
+                  source={require('../assets/map_user.png')}
+                  style={{ width: 40, height: 50 }}
                   resizeMode="stretch"
                 />
               </Marker>
-            )
-          ))}
-        </MapView>
+            )}
+            {destinationCoords && (
+              <Marker
+                coordinate={destinationCoords}
+                draggable
+                onDragEnd={async (e) => {
+                  const newCoords = e.nativeEvent.coordinate;
+                  setDestinationCoords(newCoords);
+
+                  // Recalculate route and address when the marker is dragged
+                  const apiKey = 'YOUR_API_KEY';
+                  try {
+                    const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${newCoords.latitude},${newCoords.longitude}&key=${apiKey}`);
+                    if (response.data.status === 'OK') {
+                      const formattedAddress = response.data.results[0].formatted_address;
+                      setDestinationAddress(formattedAddress);
+
+                      // Fetch new route
+                      const routeResponse = await axios.get(`https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${newCoords.latitude},${newCoords.longitude}&mode=driving&key=${apiKey}`);
+                      if (routeResponse.data.status === 'OK') {
+                        const points = routeResponse.data.routes[0].overview_polyline.points;
+                        setRouteCoordinates(decodePolyline(points));
+                        setDistance(routeResponse.data.routes[0].legs[0].distance.text);
+                      } else {
+                        alert('Unable to fetch route');
+                      }
+                    } else {
+                      setDestinationAddress('Unable to fetch address');
+                    }
+                  } catch (error) {
+                    console.error(error);
+                    setDestinationAddress('Unable to fetch address');
+                  }
+                }}
+              />
+            )}
+            {routeCoordinates.length > 0 && (
+              <Polyline
+                coordinates={routeCoordinates}
+                strokeWidth={4}
+                strokeColor="black"
+              />
+            )}
+            {postsWithPins.map(post => (
+              post.location && (
+                <Marker
+                  key={post.id}
+                  coordinate={{ latitude: post.location.latitude, longitude: post.location.longitude }}
+                  title={post.title}
+                  description={`Upvotes: ${post.upvotes}`}
+                >
+                  <Image
+                    source={require('../assets/hazard_icon.png')}
+                    style={{ width: 30, height: 30 }}
+                    resizeMode="stretch"
+                  />
+                </Marker>
+              )
+            ))}
+          </MapView>
         <View style={styles.infoContainer}>
           <View style={styles.locationContainer}>
             <Text style={styles.addressText}>{address}</Text>
@@ -272,10 +326,10 @@ const AddScreen = ({ navigation }) => {
               fetchDetails={true}
               onPress={handleDestinationSelect}
               query={{
-                key: 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw',
+                key: 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw',  // Use your API key
                 language: 'en',
-                location: { lat: 10.3157, lng: 123.8854 },
-                radius: 10000,
+                location: `${location.latitude},${location.longitude}`,  // Use current user location
+                radius: 10000,  // Define the search radius (in meters)
               }}
               styles={{
                 container: styles.autocompleteContainer,
@@ -298,7 +352,7 @@ const mapStyle = [
     "elementType": "geometry",
     "stylers": [
       {
-        "color": "#1d2c4d"
+        "color": "#ebe3cd"
       }
     ]
   },
@@ -306,7 +360,7 @@ const mapStyle = [
     "elementType": "labels.text.fill",
     "stylers": [
       {
-        "color": "#8ec3b9"
+        "color": "#523735"
       }
     ]
   },
@@ -314,16 +368,25 @@ const mapStyle = [
     "elementType": "labels.text.stroke",
     "stylers": [
       {
-        "color": "#1a3646"
+        "color": "#f5f1e6"
       }
     ]
   },
   {
-    "featureType": "administrative.country",
+    "featureType": "administrative",
     "elementType": "geometry.stroke",
     "stylers": [
       {
-        "color": "#4b6878"
+        "color": "#c9b2a6"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.land_parcel",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#dcd2be"
       }
     ]
   },
@@ -332,25 +395,7 @@ const mapStyle = [
     "elementType": "labels.text.fill",
     "stylers": [
       {
-        "color": "#64779e"
-      }
-    ]
-  },
-  {
-    "featureType": "administrative.province",
-    "elementType": "geometry.stroke",
-    "stylers": [
-      {
-        "color": "#4b6878"
-      }
-    ]
-  },
-  {
-    "featureType": "landscape.man_made",
-    "elementType": "geometry.stroke",
-    "stylers": [
-      {
-        "color": "#334e87"
+        "color": "#ae9e90"
       }
     ]
   },
@@ -359,7 +404,7 @@ const mapStyle = [
     "elementType": "geometry",
     "stylers": [
       {
-        "color": "#023e58"
+        "color": "#dfd2ae"
       }
     ]
   },
@@ -368,7 +413,7 @@ const mapStyle = [
     "elementType": "geometry",
     "stylers": [
       {
-        "color": "#283d6a"
+        "color": "#dfd2ae"
       }
     ]
   },
@@ -377,16 +422,7 @@ const mapStyle = [
     "elementType": "labels.text.fill",
     "stylers": [
       {
-        "color": "#6f9ba5"
-      }
-    ]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "labels.text.stroke",
-    "stylers": [
-      {
-        "color": "#1d2c4d"
+        "color": "#93817c"
       }
     ]
   },
@@ -395,7 +431,7 @@ const mapStyle = [
     "elementType": "geometry.fill",
     "stylers": [
       {
-        "color": "#023e58"
+        "color": "#a5b076"
       }
     ]
   },
@@ -404,7 +440,7 @@ const mapStyle = [
     "elementType": "labels.text.fill",
     "stylers": [
       {
-        "color": "#3C7680"
+        "color": "#447530"
       }
     ]
   },
@@ -413,25 +449,16 @@ const mapStyle = [
     "elementType": "geometry",
     "stylers": [
       {
-        "color": "#304a7d"
+        "color": "#f5f1e6"
       }
     ]
   },
   {
-    "featureType": "road",
-    "elementType": "labels.text.fill",
+    "featureType": "road.arterial",
+    "elementType": "geometry",
     "stylers": [
       {
-        "color": "#98a5be"
-      }
-    ]
-  },
-  {
-    "featureType": "road",
-    "elementType": "labels.text.stroke",
-    "stylers": [
-      {
-        "color": "#1d2c4d"
+        "color": "#fdfcf8"
       }
     ]
   },
@@ -440,7 +467,7 @@ const mapStyle = [
     "elementType": "geometry",
     "stylers": [
       {
-        "color": "#2c6675"
+        "color": "#f8c967"
       }
     ]
   },
@@ -449,52 +476,61 @@ const mapStyle = [
     "elementType": "geometry.stroke",
     "stylers": [
       {
-        "color": "#255763"
+        "color": "#e9bc62"
       }
     ]
   },
   {
-    "featureType": "road.highway",
+    "featureType": "road.highway.controlled_access",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#e98d58"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway.controlled_access",
+    "elementType": "geometry.stroke",
+    "stylers": [
+      {
+        "color": "#db8555"
+      }
+    ]
+  },
+  {
+    "featureType": "road.local",
     "elementType": "labels.text.fill",
     "stylers": [
       {
-        "color": "#b0d5ce"
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "labels.text.stroke",
-    "stylers": [
-      {
-        "color": "#023e58"
-      }
-    ]
-  },
-  {
-    "featureType": "transit",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#98a5be"
-      }
-    ]
-  },
-  {
-    "featureType": "transit",
-    "elementType": "labels.text.stroke",
-    "stylers": [
-      {
-        "color": "#1d2c4d"
+        "color": "#806b63"
       }
     ]
   },
   {
     "featureType": "transit.line",
-    "elementType": "geometry.fill",
+    "elementType": "geometry",
     "stylers": [
       {
-        "color": "#283d6a"
+        "color": "#dfd2ae"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.line",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#8f7d77"
+      }
+    ]
+  },
+  {
+    "featureType": "transit.line",
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#ebe3cd"
       }
     ]
   },
@@ -503,16 +539,16 @@ const mapStyle = [
     "elementType": "geometry",
     "stylers": [
       {
-        "color": "#3a4762"
+        "color": "#dfd2ae"
       }
     ]
   },
   {
     "featureType": "water",
-    "elementType": "geometry",
+    "elementType": "geometry.fill",
     "stylers": [
       {
-        "color": "#0e1626"
+        "color": "#b9d3c2"
       }
     ]
   },
@@ -521,7 +557,7 @@ const mapStyle = [
     "elementType": "labels.text.fill",
     "stylers": [
       {
-        "color": "#4e6d70"
+        "color": "#92998d"
       }
     ]
   }

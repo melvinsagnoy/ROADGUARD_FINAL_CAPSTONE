@@ -81,6 +81,11 @@ const AuthNavigator = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="ProfileUpdate"
+          component={ProfileUpdateScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="Search"
           component={SearchScreen}
           options={{ headerShown: false }}

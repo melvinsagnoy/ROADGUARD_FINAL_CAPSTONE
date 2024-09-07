@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Animated, Image } from 'react-native';
 import { firestore, auth } from '../firebaseConfig';
-import { doc, setDoc } from 'firebase/firestore'; 
+import { doc, setDoc, updateDoc } from 'firebase/firestore'; 
 
 const PasscodeInputScreen = ({ navigation, route }) => {
   const [passcode, setPasscode] = useState('');
@@ -9,6 +9,7 @@ const PasscodeInputScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [storedPasscode, setStoredPasscode] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(route.params?.phoneNumber || ''); // Add state for phone number
   const maxDigits = 4;
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
@@ -59,7 +60,11 @@ const PasscodeInputScreen = ({ navigation, route }) => {
 
           const email = user.email; // Ensure this is valid and non-empty.
           const userDocRef = doc(firestore, 'users', email); // Ensure this is correctly formed.
-          await setDoc(userDocRef, { passcode: storedPasscode });
+
+          // Update only the passcode field, preserving existing phoneNumber and needsProfileUpdate
+          await updateDoc(userDocRef, { 
+            passcode: storedPasscode
+          });
 
           setLoading(false);
           navigation.navigate('ProfileUpdate');
