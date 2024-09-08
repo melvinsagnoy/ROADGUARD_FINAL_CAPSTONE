@@ -86,4 +86,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PhoneNumberModal;x
+export default PhoneNumberModal;

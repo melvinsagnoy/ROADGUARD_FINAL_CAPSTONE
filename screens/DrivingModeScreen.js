@@ -231,97 +231,102 @@ const DrivingModeScreen = ({ navigation, route }) => {
   const [directions, setDirections] = useState([]);
   const [currentInstructionIndex, setCurrentInstructionIndex] = useState(0);
   const [nextTurnInstruction, setNextTurnInstruction] = useState('');
-  const [posts, setPosts] = useState([]); // New state for posts
-  const [hazardAlerted, setHazardAlerted] = useState(false); // Track if hazard alert is already shown
+  const [posts, setPosts] = useState([]);
+  const [hazardAlerted, setHazardAlerted] = useState(false);
   const mapRef = useRef(null);
+  const [duration, setDuration] = useState(null);
 
   useEffect(() => {
-    // Fetch route data
-    const fetchRouteData = async () => {
-      const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Replace with your actual API key
-      try {
-        const response = await axios.get(
-          `https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&mode=driving&key=${apiKey}`
-        );
-        if (response.data.status === 'OK') {
-          const points = response.data.routes[0].overview_polyline.points;
-          const steps = response.data.routes[0].legs[0].steps;
-          setRouteCoordinates(decodePolyline(points));
-          setDistance(response.data.routes[0].legs[0].distance.text);
-          setDirections(steps.map(step => stripHtmlTags(step.html_instructions)));
-        } else {
-          Alert.alert('Error', 'Unable to fetch route');
-        }
-      } catch (error) {
-        console.error(error);
+  if (!location || !destinationCoords) return;
+  const fetchRouteData = async () => {
+    const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Replace with your actual API key
+    try {
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&mode=driving&key=${apiKey}`
+      );
+      if (response.data.status === 'OK') {
+        const points = response.data.routes[0].overview_polyline.points;
+        const steps = response.data.routes[0].legs[0].steps;
+        setRouteCoordinates(decodePolyline(points));
+        setDistance(response.data.routes[0].legs[0].distance.text);
+        setDuration(response.data.routes[0].legs[0].duration.text); // Set duration
+        setDirections(steps.map(step => stripHtmlTags(step.html_instructions)));
+      } else {
         Alert.alert('Error', 'Unable to fetch route');
       }
-    };
-
-    fetchRouteData();
-  }, [location, destinationCoords]);
-
-  useEffect(() => {
-  // Fetch posts (hazards) from Firebase Realtime Database
-  const postsRef = ref(database, 'posts');
-  const unsubscribe = onValue(postsRef, (snapshot) => {
-    const postsData = snapshot.val();
-    if (postsData) {
-      const filteredPosts = Object.values(postsData).filter(post => post.upvotes >= 2);
-      setPosts(filteredPosts);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Unable to fetch route');
     }
-  }, (error) => {
-    console.error('Error fetching posts:', error);
-  });
-
-  return () => {
-    // Clean up listener on unmount
-    unsubscribe();
   };
-}, []);
+
+  fetchRouteData();
+}, [location, destinationCoords]);
 
   useEffect(() => {
-    // Handle location updates and check for proximity to hazards
-    const handleLocationUpdate = () => {
-      if (directions.length > 0 && routeCoordinates.length > 0) {
-        const currentInstruction = directions[currentInstructionIndex];
-        if (currentInstruction) {
-          const nextInstructionIndex = currentInstructionIndex + 1;
-          const nextInstruction = directions[nextInstructionIndex];
-
-          const distanceToNextTurn = calculateDistanceToNextTurn(location, routeCoordinates, nextInstructionIndex);
-
-          if (distanceToNextTurn < 50) {
-            setNextTurnInstruction(currentInstruction);
-            setCurrentInstructionIndex(nextInstructionIndex);
-          }
-
-          // Check proximity to any hazard posts
-          posts.forEach((post) => {
-            const distanceToHazard = getDistance(
-              location.latitude, location.longitude,
-              post.location.latitude, post.location.longitude
-            );
-
-            // If within 100 meters of the hazard and not already alerted
-            if (distanceToHazard < 100 && !hazardAlerted) {
-              triggerHazardAlert(post);
-            }
-          });
-        }
+    const postsRef = ref(database, 'posts');
+    const unsubscribe = onValue(postsRef, (snapshot) => {
+      const postsData = snapshot.val();
+      if (postsData) {
+        const filteredPosts = Object.values(postsData).filter(post => post.upvotes >= 2);
+        setPosts(filteredPosts);
       }
+    }, (error) => {
+      console.error('Error fetching posts:', error);
+    });
+
+    return () => {
+      unsubscribe();
     };
+  }, []);
 
-    handleLocationUpdate();
-    const interval = setInterval(handleLocationUpdate, 5000);
+  useEffect(() => {
+  const handleLocationUpdate = () => {
+  if (directions.length > 0 && routeCoordinates.length > 0) {
+    const currentInstruction = directions[currentInstructionIndex];
+    if (currentInstruction) {
+      const nextInstructionIndex = currentInstructionIndex + 1;
+      const nextInstruction = directions[nextInstructionIndex];
 
-    return () => clearInterval(interval);
-  }, [location, directions, routeCoordinates, currentInstructionIndex, posts, hazardAlerted]);
+      const distanceToNextTurn = calculateDistanceToNextTurn(location, routeCoordinates, nextInstructionIndex);
+
+      console.log(`Current Instruction: ${currentInstruction}`);
+      console.log(`Next Instruction: ${nextInstruction}`);
+      console.log(`Distance to Next Turn: ${distanceToNextTurn}`);
+
+      // Check if the next turn is within 50 meters
+      if (distanceToNextTurn < 50) {
+        setNextTurnInstruction(nextInstruction);
+        setCurrentInstructionIndex(nextInstructionIndex);
+        // Announce the next turn instruction
+        const turnDirection = nextInstruction.includes('left') ? 'left' :
+                              nextInstruction.includes('right') ? 'right' : 'straight';
+        Speech.speak(`Next turn ${turnDirection} in 50 meters: ${stripHtmlTags(nextInstruction)}`);
+      }
+
+      posts.forEach((post) => {
+        const distanceToHazard = getDistance(
+          location.latitude, location.longitude,
+          post.location.latitude, post.location.longitude
+        );
+
+        if (distanceToHazard < 100 && !hazardAlerted) {
+          triggerHazardAlert(post);
+        }
+      });
+    }
+  }
+};
+
+  handleLocationUpdate();
+  const interval = setInterval(handleLocationUpdate, 5000);
+
+  return () => clearInterval(interval);
+}, [location, directions, routeCoordinates, currentInstructionIndex, posts, hazardAlerted]);
 
   const triggerHazardAlert = (post) => {
     setHazardAlerted(true);
 
-    // Visual alert
     Alert.alert(
       'Hazard Alert!',
       `Hazard ahead: ${post.title}. Upvotes: ${post.upvotes}`,
@@ -331,7 +336,6 @@ const DrivingModeScreen = ({ navigation, route }) => {
       ]
     );
 
-    // Voice alert
     Speech.speak(`Hazard ahead: ${post.title}. Please proceed with caution or take an alternate route.`);
   };
 
@@ -399,21 +403,21 @@ const DrivingModeScreen = ({ navigation, route }) => {
   };
 
   const getDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Radius of the Earth in kilometers
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c * 1000; // Distance in meters
-    return distance;
-  };
+  const R = 6371; // Radius of the Earth in kilometers
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c * 1000; // Distance in meters
+  return distance;
+};
 
   const stripHtmlTags = (html) => {
-    return html.replace(/<[^>]*>/g, '');
-  };
+  return html.replace(/<\/?[^>]+(>|$)/g, ""); // Remove all HTML tags
+};
 
   const handleDrivingModePress = () => {
     const url = `https://www.google.com/maps/dir/?api=1&origin=${location.latitude},${location.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&travelmode=driving`;
@@ -422,38 +426,45 @@ const DrivingModeScreen = ({ navigation, route }) => {
 
     return (
     <View style={styles.container}>
-    <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('Add')}>
-  <Text style={{ color: 'white' }}>Back</Text>
-</TouchableOpacity>
+      <View style={styles.headerContainer}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+
+        <View style={styles.nextTurnContainer}>
+          <Icon
+            name={
+              nextTurnInstruction.includes('left') ? 'turn-left' :
+              nextTurnInstruction.includes('right') ? 'turn-right' :
+              'straight'
+            }
+            size={24}
+            style={styles.directionIcon}
+          />
+          <View style={styles.nextTurnTextContainer}>
+            <Text style={styles.nextTurnText}>Next Turn: {nextTurnInstruction}</Text>
+          </View>
+        </View>
+      </View>
+
       <MapView
-        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={{
-          latitude: location.latitude,
-          longitude: location.longitude,
+          latitude: location?.latitude || 0,
+          longitude: location?.longitude || 0,
           latitudeDelta: 0.005,
           longitudeDelta: 0.005,
         }}
         showsUserLocation
         showsMyLocationButton
         rotateEnabled
-        customMapStyle={mapStyle}
       >
-        {location && (
-          <Marker coordinate={location} title="You are here">
-            <Image
-              source={require('../assets/map_user.png')}
-              style={styles.userMarker}
-              resizeMode="stretch"
-            />
-          </Marker>
-        )}
         {destinationCoords && <Marker coordinate={destinationCoords} />}
         {routeCoordinates.length > 0 && (
           <Polyline coordinates={routeCoordinates} strokeWidth={4} strokeColor="black" />
         )}
-        {posts.map((post, index) => (
+        {posts.map((post, index) =>
           post.location && (
             <Marker
               key={index}
@@ -468,26 +479,16 @@ const DrivingModeScreen = ({ navigation, route }) => {
               />
             </Marker>
           )
-        ))}
+        )}
       </MapView>
 
       <View style={styles.infoContainer}>
-        <Text style={styles.addressText}>{destinationAddress}</Text>
-        <Text style={styles.distanceText}>{distance}</Text>
-      </View>
-
-      <View style={styles.nextTurnContainer}>
-        <Icon 
-            name={nextTurnInstruction.includes('left') ? 'turn-left' : nextTurnInstruction.includes('right') ? 'turn-right' : 'straight'} 
-            size={24} 
-            style={styles.directionIcon} 
-            />
-        <View style={styles.nextTurnTextContainer}>
-            <Text style={styles.nextTurnText}>Next Turn: {nextTurnInstruction}</Text>
-        </View>
+          <Text style={styles.addressText}>{destinationAddress}</Text>
+          <Text style={styles.distanceText}>{distance}</Text>
+          <Text style={styles.durationText}>{duration}</Text>
         </View>
 
-      <TouchableOpacity style={styles.drivingModeButton} onPress={handleDrivingModePress}>
+      <TouchableOpacity style={styles.drivingModeButton} onPress={() => {/* Handle press */}}>
         <Text style={styles.drivingModeButtonText}>Open in Google Maps</Text>
       </TouchableOpacity>
     </View>
@@ -497,13 +498,56 @@ const DrivingModeScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F5F5F5', // Background color for the entire screen
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    right: 10,
+    zIndex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Semi-transparent background for the header
+    padding: 10,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  backButton: {
+    backgroundColor: '#E0C55B',
+    padding: 10,
+    borderRadius: 5,
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 16,
+  },
+  nextTurnContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF', // Background color for the next turn container
+    padding: 10,
+    borderRadius: 8,
+    elevation: 2,
+    flex: 1,
+    marginLeft: 10,
+  },
+  directionIcon: {
+    marginRight: 10,
+    color: '#3b5998', // Adjust as needed
+  },
+  nextTurnTextContainer: {
+    flex: 1,
+  },
+  nextTurnText: {
+    fontSize: 16,
+    color: '#333',
   },
   map: {
     flex: 1,
-  },
-  userMarker: {
-    width: 30,
-    height: 30,
   },
   hazardIcon: {
     width: 24,
@@ -514,14 +558,13 @@ const styles = StyleSheet.create({
     bottom: 70,
     left: 10,
     right: 10,
-    backgroundColor: 'white',
+    backgroundColor: 'white', // Background color for the info container
     padding: 10,
     borderRadius: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 5,
   },
   addressText: {
     fontSize: 16,
@@ -529,52 +572,26 @@ const styles = StyleSheet.create({
   },
   distanceText: {
     fontSize: 14,
+    color: '#666',
+  },
+  durationText: {
+    fontSize: 14,
+    color: '#666',
     marginTop: 5,
   },
-  nextTurnContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: 'white',
-  padding: 10,
-  marginHorizontal: 10,
-  marginBottom: 10,
-  borderRadius: 8,
-  elevation: 2,
-},
-directionIcon: {
-  marginRight: 10,
-  color: '#3b5998', // Adjust the color as needed
-},
-nextTurnTextContainer: {
-  flex: 1,
-},
-nextTurnText: {
-  fontSize: 16,
-  color: '#333',
-},
   drivingModeButton: {
     position: 'absolute',
-    bottom: 10,
+    bottom: 20,
     left: 10,
     right: 10,
     backgroundColor: '#E0C55B',
     padding: 15,
-    borderRadius: 5,
+    borderRadius: 10,
     alignItems: 'center',
   },
   drivingModeButtonText: {
-    fontSize: 16,
     color: 'white',
-    fontWeight: 'bold',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 40, // Adjust for status bar height if necessary
-    left: 10,
-    zIndex: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Optional: to make the button stand out
-    borderRadius: 20,
-    padding: 10,
+    fontSize: 16,
   },
 });
 

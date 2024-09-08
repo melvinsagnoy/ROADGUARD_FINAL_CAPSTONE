@@ -66,6 +66,7 @@ const AddScreen = ({ navigation }) => {
 
 
   useEffect(() => {
+     console.log("Current Location:", location);
   if (mapRef.current && location) {
     // Define a zoomed-out region
     const zoomedOutRegion = {
@@ -95,6 +96,7 @@ const AddScreen = ({ navigation }) => {
   }, []);
 
   const fetchPostsWithPins = async () => {
+     console.log("Posts with Pins:", postsWithPins);
   const db = getDatabase(); // Initialize Firebase Realtime Database
   const postsRef = ref(db, 'posts'); // Reference to the posts node
 
@@ -248,7 +250,7 @@ const AddScreen = ({ navigation }) => {
                   setDestinationCoords(newCoords);
 
                   // Recalculate route and address when the marker is dragged
-                  const apiKey = 'YOUR_API_KEY';
+                  const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw';
                   try {
                     const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${newCoords.latitude},${newCoords.longitude}&key=${apiKey}`);
                     if (response.data.status === 'OK') {
@@ -308,16 +310,16 @@ const AddScreen = ({ navigation }) => {
           </View>
         </View>
         <TouchableOpacity style={styles.searchButton} onPress={handleSearchPress}>
-          <Icon name="search" size={24} color="#fff" />
+          <Icon name="search" size={24} color="black" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.locationButton} onPress={handleLocationPress}>
-          <Icon name="person-pin-circle" size={24} color="#fff" />
+          <Icon name="person-pin-circle" size={24} color="black" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.drivingModeButton} onPress={handleDrivingModePress}>
-          <Icon name="directions-car" size={24} color="#fff" />
+          <Icon name="directions-car" size={24} color="black" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-back" size={24} color="#fff" />
+          <Icon name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
         {searchVisible && (
           <View style={styles.autocompleteContainer}>
@@ -609,7 +611,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 80,
     right: 20,
-    backgroundColor: '#007BFF',
+    backgroundColor: '#E0C55B',
     padding: 15,
     borderRadius: 50,
   },
@@ -617,7 +619,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     right: 20,
-    backgroundColor: '#28a745',
+    backgroundColor: '#E0C55B',
     padding: 15,
     borderRadius: 50,
   },
@@ -625,7 +627,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 140,
     right: 20,
-    backgroundColor: '#dc3545',
+    backgroundColor: '#E0C55B',
     padding: 15,
     borderRadius: 50,
   },
@@ -633,7 +635,7 @@ const styles = StyleSheet.create({
   position: 'absolute',
   bottom: 200, // Position above the driving mode icon
   right: 20, // Align with the other icons
-  backgroundColor: '#007BFF',
+  backgroundColor: '#E0C55B',
   padding: 15,
   borderRadius: 50,
   zIndex: 2, // Ensure it's above other components

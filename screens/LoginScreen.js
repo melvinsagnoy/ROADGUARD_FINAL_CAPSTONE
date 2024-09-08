@@ -22,11 +22,11 @@ const LoginScreen = ({ navigation }) => {
 
 
 const handleLogin = async (emailOrPhone, password) => {
-  console.log('emailOrPhone:', emailOrPhone); // Log the value of emailOrPhone
+  console.log('emailOrPhone:', emailOrPhone);
   setLoading(true);
 
   const auth = getAuth();
-  const db = getFirestore(); // Get Firestore instance
+  const db = getFirestore(); 
 
   try {
     let userCredential;
@@ -37,15 +37,8 @@ const handleLogin = async (emailOrPhone, password) => {
       userCredential = await signInWithEmailAndPassword(auth, emailOrPhone, password);
     } else if (typeof emailOrPhone === 'string') {
       // Look up phone number in Firestore
-      console.log('Looking up phone number:', emailOrPhone); // Log the phone number being looked up
-
-      // Get the users collection reference
       const usersCollectionRef = collection(db, 'users');
-
-      // Create a query to find the document with the matching phone number
       const q = query(usersCollectionRef, where('phoneNumber', '==', emailOrPhone));
-
-      // Execute the query
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
@@ -56,10 +49,7 @@ const handleLogin = async (emailOrPhone, password) => {
       const userData = userDoc.data();
       userEmail = userData.email;
 
-      // Log the retrieved email
       console.log('Retrieved email:', userEmail);
-
-      // Login with the retrieved email
       userCredential = await signInWithEmailAndPassword(auth, userEmail, password);
     } else {
       throw new Error('Invalid input.');
@@ -67,13 +57,17 @@ const handleLogin = async (emailOrPhone, password) => {
 
     // Successfully logged in
     console.log('User logged in:', userCredential.user.email);
+
+    // Save login status
+    await AsyncStorage.setItem('userLoggedIn', 'true');
+
     setLoading(false);
     navigation.navigate('VerificationOptions');
   } catch (error) {
     setLoading(false);
     Alert.alert('Login Error', error.message);
   }
-}; 
+};
 
   const rotateInterpolate = rotateAnim.interpolate({
     inputRange: [0, 1],

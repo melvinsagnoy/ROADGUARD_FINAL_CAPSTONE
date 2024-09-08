@@ -55,10 +55,10 @@ const RegisterScreen = ({ navigation }) => {
       // Use email directly as document ID
       const docRef = doc(firestore, 'users', email);
 
-      // Set initial user data
+      // Set initial user data with createdAt timestamp
       await setDoc(docRef, {
         email: email,
-        needsProfileUpdate: true,
+        createdAt: new Date().toISOString(), // Add the timestamp here
       });
 
       setLoading(false);
@@ -253,12 +253,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#FFF',
   },
-  loginText: {
-    marginTop: 20,
-    color: '#FFF',
-    fontSize: 16,
-    textAlign: 'center',
-  },
   agreementContainer: {
     width: '100%',
     flexDirection: 'row',
@@ -279,12 +273,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0C55B',
   },
   agreementText: {
+    fontSize: 14,
     color: '#FFF',
-    fontSize: 16,
   },
   link: {
     color: '#E0C55B',
-    textDecorationLine: 'underline',
   },
 });
 

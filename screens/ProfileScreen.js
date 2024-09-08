@@ -21,6 +21,7 @@ const ProfileScreen = ({ navigation }) => {
   const [needsNameUpdate, setNeedsNameUpdate] = useState(false);
 const [needsImageUpdate, setNeedsImageUpdate] = useState(false);
 const [isProfileComplete, setIsProfileComplete] = useState(false);
+const [newPhoneNumber, setNewPhoneNumber] = useState(''); // New state for phone number
 const [phoneNumber, setPhoneNumber] = useState('');
 
   useEffect(() => {
@@ -63,6 +64,31 @@ const [phoneNumber, setPhoneNumber] = useState('');
   } else {
     console.log('No user data found for:', email);
     return {};
+  }
+};
+
+const updatePhoneNumber = async () => {
+  try {
+    const email = auth.currentUser.email;
+    const userRef = doc(firestore, 'users', email);
+    const docSnap = await getDoc(userRef);
+
+    if (docSnap.exists()) {
+      await updateDoc(userRef, {
+        phoneNumber: newPhoneNumber,
+      });
+      setPhoneNumber(newPhoneNumber);
+      Alert.alert('Success', 'Phone number updated successfully!');
+    } else {
+      await setDoc(userRef, {
+        phoneNumber: newPhoneNumber,
+      });
+      setPhoneNumber(newPhoneNumber);
+      Alert.alert('Success', 'Phone number added successfully!');
+    }
+  } catch (error) {
+    console.error('Error updating phone number:', error);
+    Alert.alert('Error', 'Failed to update phone number.');
   }
 };
 
@@ -248,7 +274,9 @@ const updateProfileImage = async (downloadURL) => {
     if (newName) {
       await updateDisplayName();
     }
-
+if (newPhoneNumber.trim()) {
+      await updatePhoneNumber();
+    }
     if (newProfileImageUri) {
       const downloadURL = await uploadImage(newProfileImageUri);
       await updateProfileImage(downloadURL);
@@ -329,6 +357,13 @@ const updateProfileImage = async (downloadURL) => {
           <Text style={styles.optionText}>Chats</Text>
         </TouchableOpacity>
         <TouchableOpacity
+  style={styles.option}
+  onPress={() => navigation.navigate('PrivacySecurityScreen')}
+>
+  <FontAwesome name="shield" size={24} color="black" />
+  <Text style={styles.optionText}>Privacy & Security</Text>
+</TouchableOpacity>
+        <TouchableOpacity
           style={styles.option}
           onPress={handleLogout}
         >
@@ -377,6 +412,12 @@ const updateProfileImage = async (downloadURL) => {
       value={newName}
       onChangeText={setNewName}
     />
+    <TextInput
+  style={styles.input}
+  placeholder="New Phone Number"
+  value={newPhoneNumber}
+  onChangeText={setNewPhoneNumber}
+/>
     <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
       <Text style={styles.imageButtonText}>Change Profile Image</Text>
     </TouchableOpacity>
