@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Animated, Image } from 'react-native';
 import { Formik } from 'formik';
 import * as yup from 'yup';
@@ -20,54 +20,53 @@ const LoginScreen = ({ navigation }) => {
   });
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    const checkUserLoggedIn = async () => {
+      const userLoggedIn = await AsyncStorage.getItem('userLoggedIn');
+      if (userLoggedIn) {
+        navigation.navigate('VerificationOptions');
+      }
+    };
+    checkUserLoggedIn();
+  }, []);
 
-const handleLogin = async (emailOrPhone, password) => {
-  console.log('emailOrPhone:', emailOrPhone);
-  setLoading(true);
+  const handleLogin = async (emailOrPhone, password) => {
+    setLoading(true);
+    const auth = getAuth();
+    const db = getFirestore(); 
 
-  const auth = getAuth();
-  const db = getFirestore(); 
+    try {
+      let userCredential;
+      let userEmail = emailOrPhone;
 
-  try {
-    let userCredential;
-    let userEmail = emailOrPhone;
+      if (emailOrPhone.includes('@')) {
+        userCredential = await signInWithEmailAndPassword(auth, emailOrPhone, password);
+      } else {
+        const usersCollectionRef = collection(db, 'users');
+        const q = query(usersCollectionRef, where('phoneNumber', '==', emailOrPhone));
+        const querySnapshot = await getDocs(q);
 
-    if (typeof emailOrPhone === 'string' && emailOrPhone.includes('@')) {
-      // Login with email
-      userCredential = await signInWithEmailAndPassword(auth, emailOrPhone, password);
-    } else if (typeof emailOrPhone === 'string') {
-      // Look up phone number in Firestore
-      const usersCollectionRef = collection(db, 'users');
-      const q = query(usersCollectionRef, where('phoneNumber', '==', emailOrPhone));
-      const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+          throw new Error('No user found with this phone number.');
+        }
 
-      if (querySnapshot.empty) {
-        throw new Error('No user found with this phone number.');
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+        userEmail = userData.email;
+        userCredential = await signInWithEmailAndPassword(auth, userEmail, password);
       }
 
-      const userDoc = querySnapshot.docs[0];
-      const userData = userDoc.data();
-      userEmail = userData.email;
-
-      console.log('Retrieved email:', userEmail);
-      userCredential = await signInWithEmailAndPassword(auth, userEmail, password);
-    } else {
-      throw new Error('Invalid input.');
+      await AsyncStorage.setItem('userLoggedIn', JSON.stringify({
+        email: userCredential.user.email,
+        uid: userCredential.user.uid,
+      }));
+      setLoading(false);
+      navigation.navigate('VerificationOptions');
+    } catch (error) {
+      setLoading(false);
+      Alert.alert('Login Error', error.message);
     }
-
-    // Successfully logged in
-    console.log('User logged in:', userCredential.user.email);
-
-    // Save login status
-    await AsyncStorage.setItem('userLoggedIn', 'true');
-
-    setLoading(false);
-    navigation.navigate('VerificationOptions');
-  } catch (error) {
-    setLoading(false);
-    Alert.alert('Login Error', error.message);
-  }
-};
+  };
 
   const rotateInterpolate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -75,57 +74,66 @@ const handleLogin = async (emailOrPhone, password) => {
   });
 
   if (!fontsLoaded) {
-    return null; // Load font here or render a loading indicator
+    return null;
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.form}>
+      {/* Top Background */}
+      <View style={styles.topBackground}>
+        <Image
+          source={require('../assets/icon.png')}
+          style={styles.logo}
+        />
+      </View>
+
+      {/* Rounded Container for Login */}
+      <View style={styles.loginContainer}>
+        <Text style={styles.welcomeText}>Welcome back!</Text>
         <Formik
-            validationSchema={loginValidationSchema}
-            initialValues={{ emailOrPhone: '', password: '' }}
-            onSubmit={(values) => handleLogin(values.emailOrPhone, values.password)}
-          >
+          validationSchema={loginValidationSchema}
+          initialValues={{ emailOrPhone: '', password: '' }}
+          onSubmit={(values) => handleLogin(values.emailOrPhone, values.password)}
+        >
           {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
             <>
-              <View style={styles.header}>
-                <Text style={[styles.label, styles.title, { fontFamily: 'Poppins' }]}>Sign-In</Text>
-              </View>
-
-              <Text style={[styles.label, styles.emailOrPhoneLabel, { fontFamily: 'Poppins' }]}>
-                Email or Phone Number
-              </Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email or phone number"
+                placeholder="Email or Phone"
                 onChangeText={handleChange('emailOrPhone')}
                 onBlur={handleBlur('emailOrPhone')}
                 value={values.emailOrPhone}
                 placeholderTextColor="#7C7A7A"
-                fontFamily="Poppins"
                 keyboardType="email-address"
               />
               {touched.emailOrPhone && errors.emailOrPhone && (
                 <Text style={styles.errorText}>{errors.emailOrPhone}</Text>
               )}
 
-              <Text style={[styles.label, styles.passLabel, { fontFamily: 'Poppins' }]}>Password</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your password"
+                placeholder="Password"
                 onChangeText={handleChange('password')}
                 onBlur={handleBlur('password')}
                 value={values.password}
                 secureTextEntry
                 placeholderTextColor="#7C7A7A"
-                fontFamily="Poppins"
               />
               {touched.password && errors.password && (
                 <Text style={styles.errorText}>{errors.password}</Text>
               )}
 
+              <View style={styles.rememberRow}>
+                <TouchableOpacity>
+                  <Text style={styles.rememberMe}>Remember me</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+                  <Text style={styles.forgotPassword}>Forgot Password?</Text>
+                </TouchableOpacity>
+              </View>
+
               <TouchableOpacity
-                style={[styles.button, { backgroundColor: '#E0C55B' }]}
+                style={styles.button}
                 onPress={handleSubmit}
                 disabled={loading}
               >
@@ -134,15 +142,22 @@ const handleLogin = async (emailOrPhone, password) => {
                     <Image source={require('../assets/tire.png')} style={styles.loadingImage} />
                   </Animated.View>
                 ) : (
-                  <Text style={styles.buttonText}>Log-in</Text>
+                  <Text style={styles.buttonText}>Sign In</Text>
                 )}
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.googleSignIn}>
+                <Image source={require('../assets/google_logo.png')} style={styles.googleLogo} />
+                <Text style={styles.googleText}>Sign in with Google</Text>
               </TouchableOpacity>
             </>
           )}
         </Formik>
 
         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={[styles.registerText, { fontFamily: 'Poppins' }]}>Don't have an account? Register</Text>
+          <Text style={styles.registerText}>
+            Don’t have an account? <Text style={styles.signUp}>Sign Up</Text>
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -152,87 +167,112 @@ const handleLogin = async (emailOrPhone, password) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 16,
-    backgroundColor: '#545151',
-    justifyContent: 'center',
+    backgroundColor: '#FFFAE6',
     alignItems: 'center',
-  },
-  header: {
     justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-    marginBottom: 0,
   },
-  emailOrPhoneLabel: {
-    marginTop: 20,
-    padding: 5,
-    fontSize: 15,
-    marginLeft: 25,
-    color: 'white',
-  },
-  passLabel: {
-    padding: 5,
-    fontSize: 15,
-    marginLeft: 25,
-    color: 'white',
-  },
-  label: {
-    fontSize: 15,
-    padding: 5,
-    color: 'white',
-    alignSelf: 'flex-start',
-  },
-  title: {
-    color: 'white',
-    padding: 10,
-    marginTop: 0,
-    fontSize: 40,
-  },
-  form: {
+  topBackground: {
     width: '100%',
-    justifyContent: 'center',
+    height: '35%',
+    backgroundColor: '#FFFAE6',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: {
+    width: 200,
+    height: 200,
+    borderRadius:25,
+    top: 50,
+  },
+  loginContainer: {
+    width: '100%',
+   backgroundColor: '#81818199',
+    borderTopLeftRadius: 50,
+    borderTopRightRadius: 50,
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#3A3A3A',
+    marginBottom: 20,
   },
   input: {
-    width: 300,
-    height: 45,
-    borderColor: '#7C7A7A',
-    borderWidth: 2,
-    marginBottom: 10,
-    paddingLeft: 8,
-    borderRadius: 20,
-    color: 'white',
+    width: '100%',
+    height: 50,
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    borderRadius: 25,
+    paddingHorizontal: 15,
+    marginVertical: 10,
+    backgroundColor: '#F1F1F1',
+    color: '#333',
   },
-  errorText: {
-    height: 20,
-    fontSize: 12,
-    color: 'red',
-    alignSelf: 'center',
+  rememberRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 20,
+  },
+  rememberMe: {
+    color: '#7C7A7A',
+    fontSize: 14,
+  },
+  forgotPassword: {
+    color: '#F6EF00',
+    fontSize: 14,
+  },
+  button: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#F6EF00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 25,
+    marginVertical: 10,
+  },
+  buttonText: {
+    color: '#000',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  googleSignIn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    borderRadius: 25,
+    height: 50,
+    width: 190,
+    marginVertical: 10,
+    backgroundColor: '#FFF',
+  },
+  googleLogo: {
+    width: 24,
+    height: 24,
+    marginRight: 10,
+  },
+  googleText: {
+    fontSize: 16,
+    color: '#333',
   },
   registerText: {
     marginTop: 20,
-    color: 'white',
-    fontSize: 16,
-    textAlign: 'center',
+    color: '#7C7A7A',
+    fontSize: 14,
   },
-  button: {
-    width: 300,
-    height: 53,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#E0C55B',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 5,
-    position: 'relative', // Ensure positioning for loading indicator
-  },
-  buttonText: {
-    color: 'black',
-    fontSize: 20,
+  signUp: {
+    color: '#F6EF00',
     fontWeight: 'bold',
+  },
+  errorText: {
+    fontSize: 12,
+    color: 'red',
+    marginBottom: 10,
   },
   loadingContainer: {
     position: 'absolute',
@@ -243,4 +283,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen;
+export default LoginScreen

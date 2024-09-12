@@ -6,6 +6,7 @@ import { database } from '../firebaseConfig'; // Adjust the import path as neede
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
 import * as Speech from 'expo-speech'; // Import TTS
+import * as Location from 'expo-location'; // Import Expo Location for heading
 
 
 const mapStyle = [
@@ -235,10 +236,11 @@ const DrivingModeScreen = ({ navigation, route }) => {
   const [hazardAlerted, setHazardAlerted] = useState(false);
   const mapRef = useRef(null);
   const [duration, setDuration] = useState(null);
+  const [heading, setHeading] = useState(0); // State for user heading
 
-  useEffect(() => {
-  if (!location || !destinationCoords) return;
+  
   const fetchRouteData = async () => {
+    if (!location || !destinationCoords) return;
     const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Replace with your actual API key
     try {
       const response = await axios.get(
@@ -260,8 +262,20 @@ const DrivingModeScreen = ({ navigation, route }) => {
     }
   };
 
-  fetchRouteData();
-}, [location, destinationCoords]);
+  const getHeading = async () => {
+    try {
+      const { heading } = await Location.getHeadingAsync();
+      setHeading(heading);
+    } catch (error) {
+      console.error('Error getting heading:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchRouteData();
+    const headingInterval = setInterval(() => getHeading(), 1000); // Update heading every second
+    return () => clearInterval(headingInterval);
+  }, [location, destinationCoords]);
 
   useEffect(() => {
     const postsRef = ref(database, 'posts');
@@ -279,84 +293,6 @@ const DrivingModeScreen = ({ navigation, route }) => {
       unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-  const handleLocationUpdate = () => {
-  if (directions.length > 0 && routeCoordinates.length > 0) {
-    const currentInstruction = directions[currentInstructionIndex];
-    if (currentInstruction) {
-      const nextInstructionIndex = currentInstructionIndex + 1;
-      const nextInstruction = directions[nextInstructionIndex];
-
-      const distanceToNextTurn = calculateDistanceToNextTurn(location, routeCoordinates, nextInstructionIndex);
-
-      console.log(`Current Instruction: ${currentInstruction}`);
-      console.log(`Next Instruction: ${nextInstruction}`);
-      console.log(`Distance to Next Turn: ${distanceToNextTurn}`);
-
-      // Check if the next turn is within 50 meters
-      if (distanceToNextTurn < 50) {
-        setNextTurnInstruction(nextInstruction);
-        setCurrentInstructionIndex(nextInstructionIndex);
-        // Announce the next turn instruction
-        const turnDirection = nextInstruction.includes('left') ? 'left' :
-                              nextInstruction.includes('right') ? 'right' : 'straight';
-        Speech.speak(`Next turn ${turnDirection} in 50 meters: ${stripHtmlTags(nextInstruction)}`);
-      }
-
-      posts.forEach((post) => {
-        const distanceToHazard = getDistance(
-          location.latitude, location.longitude,
-          post.location.latitude, post.location.longitude
-        );
-
-        if (distanceToHazard < 100 && !hazardAlerted) {
-          triggerHazardAlert(post);
-        }
-      });
-    }
-  }
-};
-
-  handleLocationUpdate();
-  const interval = setInterval(handleLocationUpdate, 5000);
-
-  return () => clearInterval(interval);
-}, [location, directions, routeCoordinates, currentInstructionIndex, posts, hazardAlerted]);
-
-  const triggerHazardAlert = (post) => {
-    setHazardAlerted(true);
-
-    Alert.alert(
-      'Hazard Alert!',
-      `Hazard ahead: ${post.title}. Upvotes: ${post.upvotes}`,
-      [
-        { text: 'Avoid', onPress: () => getAlternateRoute(post.location) },
-        { text: 'Proceed', onPress: () => console.log('Proceeding with caution') }
-      ]
-    );
-
-    Speech.speak(`Hazard ahead: ${post.title}. Please proceed with caution or take an alternate route.`);
-  };
-
-  const getAlternateRoute = async (hazardLocation) => {
-    const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw';
-    try {
-      const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&avoid=hazards&mode=driving&key=${apiKey}`
-      );
-      if (response.data.status === 'OK') {
-        const points = response.data.routes[0].overview_polyline.points;
-        setRouteCoordinates(decodePolyline(points));
-        Alert.alert('Alternate Route', 'An alternate route has been calculated.');
-      } else {
-        Alert.alert('Error', 'Unable to find an alternate route');
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'Unable to calculate alternate route');
-    }
-  };
 
   const decodePolyline = (t) => {
     let points = [];
@@ -391,40 +327,11 @@ const DrivingModeScreen = ({ navigation, route }) => {
     return points;
   };
 
-  const calculateDistanceToNextTurn = (currentLocation, routeCoords, instructionIndex) => {
-    if (instructionIndex >= routeCoords.length) return 0;
-
-    const nextTurnLocation = routeCoords[instructionIndex];
-    const distance = getDistance(
-      currentLocation.latitude, currentLocation.longitude,
-      nextTurnLocation.latitude, nextTurnLocation.longitude
-    );
-    return distance;
-  };
-
-  const getDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371; // Radius of the Earth in kilometers
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c * 1000; // Distance in meters
-  return distance;
-};
-
   const stripHtmlTags = (html) => {
-  return html.replace(/<\/?[^>]+(>|$)/g, ""); // Remove all HTML tags
-};
-
-  const handleDrivingModePress = () => {
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${location.latitude},${location.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&travelmode=driving`;
-    Linking.openURL(url).catch(err => console.error('Error opening URL:', err));
+    return html.replace(/<\/?[^>]+(>|$)/g, ""); // Remove all HTML tags
   };
 
-    return (
+  return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -449,12 +356,17 @@ const DrivingModeScreen = ({ navigation, route }) => {
 
       <MapView
         provider={PROVIDER_GOOGLE}
+        ref={mapRef}
         style={styles.map}
-        initialRegion={{
-          latitude: location?.latitude || 0,
-          longitude: location?.longitude || 0,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
+        camera={{
+          center: {
+            latitude: location?.latitude || 0,
+            longitude: location?.longitude || 0,
+          },
+          zoom: 18.5, // Adjust zoom level for a better driving view
+          heading: heading, // Use the heading from device
+          pitch: 60,  // Tilt the map for a driving mode perspective
+          altitude: 2000,
         }}
         showsUserLocation
         showsMyLocationButton
@@ -483,17 +395,14 @@ const DrivingModeScreen = ({ navigation, route }) => {
       </MapView>
 
       <View style={styles.infoContainer}>
-          <Text style={styles.addressText}>{destinationAddress}</Text>
-          <Text style={styles.distanceText}>{distance}</Text>
-          <Text style={styles.durationText}>{duration}</Text>
-        </View>
-
-      <TouchableOpacity style={styles.drivingModeButton} onPress={() => {/* Handle press */}}>
-        <Text style={styles.drivingModeButtonText}>Open in Google Maps</Text>
-      </TouchableOpacity>
+        <Text style={styles.addressText}>{destinationAddress}</Text>
+        <Text style={styles.distanceText}>{distance}</Text>
+        <Text style={styles.durationText}>{duration}</Text>
+      </View>
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -555,7 +464,7 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     position: 'absolute',
-    bottom: 70,
+    bottom: 10,
     left: 10,
     right: 10,
     backgroundColor: 'white', // Background color for the info container
@@ -578,20 +487,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 5,
-  },
-  drivingModeButton: {
-    position: 'absolute',
-    bottom: 20,
-    left: 10,
-    right: 10,
-    backgroundColor: '#E0C55B',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  drivingModeButtonText: {
-    color: 'white',
-    fontSize: 16,
   },
 });
 

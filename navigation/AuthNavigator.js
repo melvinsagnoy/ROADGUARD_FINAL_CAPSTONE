@@ -29,25 +29,26 @@ import PrivacySecurityScreen from '../screens/PrivacySecurityScreen';
 
 const Stack = createStackNavigator();
 
+
+
 const AuthNavigator = () => {
-  const [initialRoute, setInitialRoute] = useState('Landing'); // Default route
-  const [isLoading, setIsLoading] = useState(true); // Loading state
+  const [initialRoute, setInitialRoute] = useState(null); // Initial state is null (loading state)
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const checkUserLoggedIn = async () => {
       try {
         const userData = await AsyncStorage.getItem('user');
         if (userData) {
-          const user = JSON.parse(userData);
-          setInitialRoute('VerificationOptions'); // Redirect to verification if user is logged in
+          setInitialRoute('VerificationOptions'); // If user exists, redirect to VerificationOptions
         } else {
-          setInitialRoute('Landing'); // Otherwise, start with the Landing screen
+          setInitialRoute('Landing'); // Otherwise, go to LandingScreen
         }
       } catch (error) {
         console.error('Error checking user login status:', error);
-        setInitialRoute('Landing'); // Default to Landing screen in case of error
+        setInitialRoute('Landing'); // In case of error, fallback to Landing
       } finally {
-        setIsLoading(false); // Set loading to false after checking
+        setIsLoading(false); // Once the check is complete, stop loading
       }
     };
 
@@ -55,7 +56,7 @@ const AuthNavigator = () => {
   }, []);
 
   if (isLoading) {
-    return null; // Optionally return a loading indicator while checking user status
+    return null; // Optionally, return a loading indicator here
   }
 
   return (

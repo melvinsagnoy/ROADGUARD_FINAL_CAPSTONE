@@ -94,10 +94,9 @@ const styles = StyleSheet.create({
     marginBottom: 50,
   },
   logo: {
-    width: 100,
-    height: 100,
-    resizeMode: 'contain',
-    borderRadius: 20,
+    width: 150,
+    height: 150,
+    borderRadius: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,

@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Image, Modal, FlatList, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Image, Modal, FlatList, Alert  } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { auth, firestore, storage } from '../firebaseConfig';
+import { auth, firestore, storage , database} from '../firebaseConfig';
 import { doc, getDoc, updateDoc, setDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import NavBar from './NavBar';
+import { ref as dbRef, get, onValue } from 'firebase/database';  // For Realtime Database
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';  // For Storage
+import ClaimingFormModal from './ClaimingFormModal'; 
+
+
 
 const ProfileScreen = ({ navigation }) => {
-  const [user, setUser] = useState(null);
+ const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [leaderboardVisible, setLeaderboardVisible] = useState(false);
@@ -19,10 +23,18 @@ const ProfileScreen = ({ navigation }) => {
   const [newProfileImageUri, setNewProfileImageUri] = useState('');
   const [points, setPoints] = useState(0);
   const [needsNameUpdate, setNeedsNameUpdate] = useState(false);
-const [needsImageUpdate, setNeedsImageUpdate] = useState(false);
-const [isProfileComplete, setIsProfileComplete] = useState(false);
-const [newPhoneNumber, setNewPhoneNumber] = useState(''); // New state for phone number
-const [phoneNumber, setPhoneNumber] = useState('');
+  const [needsImageUpdate, setNeedsImageUpdate] = useState(false);
+  const [isProfileComplete, setIsProfileComplete] = useState(false);
+  const [newPhoneNumber, setNewPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [rewardsModalVisible, setRewardsModalVisible] = useState(false);
+  const [rewards, setRewards] = useState([]);
+  const [claimingFormModalVisible, setClaimingFormModalVisible] = useState(false); // State for claiming form modal
+  const [selectedReward, setSelectedReward] = useState(null); // State to store the selected reward
+  const [redeemedRewards, setRedeemedRewards] = useState([]);
+const [redeemedRewardsModalVisible, setRedeemedRewardsModalVisible] = useState(false);
+  
+  
 
   useEffect(() => {
   const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -67,6 +79,61 @@ const [phoneNumber, setPhoneNumber] = useState('');
   }
 };
 
+const fetchRewards = async () => {
+    const rewardsRef = dbRef(database, 'rewards'); // Adjust the path as necessary
+    try {
+        const snapshot = await get(rewardsRef);
+        if (snapshot.exists()) {
+            const rewardsData = snapshot.val();
+            const rewardsArray = Object.keys(rewardsData).map(key => ({
+                id: key,
+                ...rewardsData[key]
+            }));
+            setRewards(rewardsArray);
+            setRewardsModalVisible(true); // Show modal when rewards are fetched
+        } else {
+            console.log('No rewards found.');
+        }
+    } catch (error) {
+        console.error('Error fetching rewards:', error);
+    }
+};
+
+ const fetchRedeemedRewards = async () => {
+  try {
+    const email = auth.currentUser?.email?.replace('.', '_').replace('@', '_');
+    if (!email) {
+      throw new Error('User email is undefined');
+    }
+
+    console.log('Sanitized email:', email); // Log the sanitized email
+
+    const redeemedRewardsPath = `claim_reward/${email}`;
+    console.log('Fetching data from path:', redeemedRewardsPath); // Log the database path
+
+    const redeemedRewardsRef = dbRef(database, redeemedRewardsPath);
+    const snapshot = await get(redeemedRewardsRef);
+
+    if (!snapshot.exists()) {
+      console.log('No redeemed rewards found.');
+      return;
+    }
+
+    const data = snapshot.val();
+    console.log('Data fetched:', data); // Log the fetched data
+
+    if (data) {
+      setRedeemedRewards([data]);
+      setRedeemedRewardsModalVisible(true);
+    }
+  } catch (error) {
+    console.error('Error fetching redeemed rewards:', error);
+  }
+};
+
+
+  
+
 const updatePhoneNumber = async () => {
   try {
     const email = auth.currentUser.email;
@@ -91,6 +158,35 @@ const updatePhoneNumber = async () => {
     Alert.alert('Error', 'Failed to update phone number.');
   }
 };
+  const handleClaimReward = async (userDetails) => {
+    if (selectedReward) {
+      // Handle reward claiming logic here...
+      Alert.alert('Success', `Reward claimed with details: ${userDetails}`);
+    }
+  };
+
+  const handleRedeem = (rewardId) => {
+  const reward = rewards.find(item => item.id === rewardId);
+  if (reward && points >= reward.pointsRequired) {
+    setSelectedReward(reward); // Set the selected reward
+    setClaimingFormModalVisible(true);
+  } else {
+    Alert.alert('Insufficient Points', 'You do not have enough points to redeem this reward.');
+  }
+};
+
+const closeClaimingFormModal = () => {
+  setClaimingFormModalVisible(false);
+  setSelectedReward(null); // Reset the selected reward
+};
+
+ const handleRedeemRewards = () => {
+    fetchRewards();
+  };
+
+  const closeModal = () => {
+    setRewardsModalVisible(false); // Close the modal
+  };
 
   const checkInitialSetup = async () => {
   try {
@@ -148,17 +244,20 @@ const updatePhoneNumber = async () => {
   };
 
   const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem('userEmail');
-      auth.signOut().then(() => {
-        navigation.navigate('Login');
-      }).catch((error) => {
-        console.error('Error logging out:', error);
-      });
-    } catch (error) {
-      console.error('Error clearing user credentials:', error);
-    }
-  };
+  try {
+    // Remove all saved items from AsyncStorage
+    await AsyncStorage.clear();
+
+    // Sign the user out
+    await auth.signOut();
+
+    // Navigate back to the Login screen
+    navigation.navigate('Landing');
+  } catch (error) {
+    console.error('Error logging out:', error);
+    Alert.alert('Error', 'Failed to log out. Please try again.');
+  }
+};
 
   const updateDisplayName = async () => {
     try {
@@ -314,12 +413,7 @@ if (newPhoneNumber.trim()) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>ROADGUARD</Text>
-        <TouchableOpacity onPress={handleLogout}>
-          <FontAwesome name="cog" size={24} color="black" />
-        </TouchableOpacity>
-      </View>
+      
       <View style={styles.profileCard}>
         <TouchableOpacity onPress={pickImage}>
           <Image source={{ uri: newProfileImageUri || imageUri }} style={styles.profileImage} />
@@ -330,14 +424,11 @@ if (newPhoneNumber.trim()) {
         <Text style={styles.points}>{points} points</Text>
       </View>
       <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => handleNavigation('RewardsScreen')}
-        >
-          <Text style={styles.buttonText}>Redeem Rewards</Text>
+         <TouchableOpacity style={styles.button} onPress={handleRedeemRewards}>
+          <Text style={styles.buttonText} color="black">Redeem Rewards</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.button} onPress={() => handleNavigation('SubscriptionScreen')}>
-          <Text style={styles.buttonText}>Subscribe</Text>
+          <Text style={styles.buttonText} color="black">Subscribe</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.options}>
@@ -349,6 +440,10 @@ if (newPhoneNumber.trim()) {
           <FontAwesome name="star" size={24} color="black" />
           <Text style={styles.optionText}>Leaderboards</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.option} onPress={fetchRedeemedRewards}>
+        <FontAwesome name="gift" size={24} color="#000" style={styles.icon} />
+        <Text style={styles.optionText}>View Redeemed Rewards</Text>
+      </TouchableOpacity>
         <TouchableOpacity
           style={styles.option}
           onPress={() => navigation.navigate('ChatList')} // Use 'ChatList' not 'ChatListScreen'
@@ -441,6 +536,91 @@ if (newPhoneNumber.trim()) {
   </View>
 </Modal>
 
+  <Modal
+        animationType="slide"
+        transparent={true}
+        visible={rewardsModalVisible}
+        onRequestClose={() => setRewardsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.rewardModal}>
+            <Text style={styles.modalTitle}>Available Rewards</Text>
+            <Text style={styles.pointsText}>Your Points: {points}</Text>
+            <View style={styles.rewardsGrid}>
+              {rewards.map((item, index) => (
+                <View
+                  key={item.id}
+                  style={[
+                    styles.rewardItem,
+                    { marginRight: (index % 2 === 0) ? 10 : 0 }
+                  ]}
+                >
+                  <Image source={{ uri: item.imageUrl }} style={styles.rewardImage} />
+                  <View style={styles.rewardDetails}>
+                    <Text style={styles.rewardText}>{item.rewardName}</Text>
+                    <Text style={styles.rewardPoints}>{item.pointsRequired} points</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.redeemButton}
+                    onPress={() => handleRedeem(item.id)}
+                  >
+                    <Text style={styles.redeemButtonText}>Redeem</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setRewardsModalVisible(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+  animationType="slide"
+  transparent={true}
+  visible={redeemedRewardsModalVisible}
+  onRequestClose={() => setRedeemedRewardsModalVisible(false)}
+>
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+    <View style={{ width: '90%', backgroundColor: '#fff', borderRadius: 10, padding: 20, elevation: 5 }}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>Redeemed Rewards</Text>
+      <FlatList
+        data={redeemedRewards}
+        keyExtractor={(item) => item.timestamp.toString()}
+        renderItem={({ item }) => (
+          <View style={{ marginBottom: 15, padding: 15, backgroundColor: '#f9f9f9', borderRadius: 10, borderWidth: 1, borderColor: '#ddd' }}>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>Reward Claimed By:</Text>
+            <Text style={{ fontSize: 16, marginBottom: 5 }}>{item.fullName}</Text>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>Address:</Text>
+            <Text style={{ fontSize: 16, marginBottom: 5 }}>{item.address}</Text>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>Phone Number:</Text>
+            <Text style={{ fontSize: 16, marginBottom: 5 }}>{item.phoneNumber}</Text>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>Status:</Text>
+            <Text style={{ fontSize: 16, marginBottom: 5 }}>{item.status}</Text>
+            <Text style={{ fontSize: 16, fontWeight: 'bold' }}>Timestamp:</Text>
+            <Text style={{ fontSize: 16 }}>{new Date(item.timestamp).toLocaleString()}</Text>
+          </View>
+        )}
+      />
+      <TouchableOpacity
+        style={{ marginTop: 15, backgroundColor: 'red', padding: 10, borderRadius: 5, alignItems: 'center' }}
+        onPress={() => setRedeemedRewardsModalVisible(false)}
+      >
+        <Text style={{ color: '#fff', fontSize: 16 }}>Close</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
+
+      <ClaimingFormModal
+  visible={claimingFormModalVisible}
+  onClose={closeClaimingFormModal}
+  reward={selectedReward} // Pass the selected reward
+  onClaim={handleClaimReward} // Pass the function to handle claiming the reward
+/>
+
+
       <NavBar navigation={navigation} isProfileComplete={isProfileComplete} />
     </View>
   );
@@ -452,6 +632,53 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     alignItems: 'center',
     paddingTop: 20,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 5,
+  },
+  buttonText: {
+    color: '#000',
+    fontWeight: 'bold',
+  },
+   modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: 300,
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+    modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  pointsText: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  marginBottom: 10,
+  textAlign: 'center',
+},
+  closeButton: {
+    backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 5,
   },
   header: {
     flexDirection: 'row',
@@ -511,10 +738,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 3,
   },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+
   options: {
     width: '90%',
   },
@@ -649,6 +873,69 @@ sendMessageButton: {
   sendMessageText: {
     marginLeft: 10,
     fontSize: 16,
+  },
+   rewardModal: {
+    width: '90%',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 20,
+    alignItems: 'center',
+    elevation: 5,
+  },
+  rewardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    width: 'auto', // Adjust based on padding and margin
+  },
+    rewardItem: {
+    width: 'auto', // Two items per row with margin
+    marginBottom: 15,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    alignItems: 'center',
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  rewardImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 8,
+  },
+  rewardDetails: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  rewardText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  rewardPoints: {
+    fontSize: 14,
+    color: '#666',
+  },
+  redeemButton: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#E0C55B',
+    borderRadius: 5,
+  },
+  redeemButtonText: {
+    color: '#000',
+    fontSize: 16,
+  },
+  closeButton: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: 'red',
+    borderRadius: 5,
+  },
+  buttonText: {
+    fontSize: 16,
+    color: '#000',
   },
 });
 
