@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
 import { firestore } from '../firebaseConfig';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const loginValidationSchema = yup.object().shape({
   emailOrPhone: yup.string().required('Email or phone number is required'),
@@ -15,22 +16,25 @@ const loginValidationSchema = yup.object().shape({
 
 const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
   const [fontsLoaded] = useFonts({
     Poppins: require('../assets/fonts/Poppins-Regular.ttf'),
   });
-  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const checkUserLoggedIn = async () => {
-      const userLoggedIn = await AsyncStorage.getItem('userLoggedIn');
-      if (userLoggedIn) {
-        navigation.navigate('VerificationOptions');
+      const userInfo = await AsyncStorage.getItem('userInfo');
+      if (userInfo) {
+        const { email, password } = JSON.parse(userInfo);
+        handleLogin(email, password, true); // Automatically login if user was remembered
       }
     };
     checkUserLoggedIn();
   }, []);
 
-  const handleLogin = async (emailOrPhone, password) => {
+  const handleLogin = async (emailOrPhone, password, autoLogin = false) => {
     setLoading(true);
     const auth = getAuth();
     const db = getFirestore(); 
@@ -54,6 +58,11 @@ const LoginScreen = ({ navigation }) => {
         const userData = userDoc.data();
         userEmail = userData.email;
         userCredential = await signInWithEmailAndPassword(auth, userEmail, password);
+      }
+
+      // Store credentials in AsyncStorage if "Remember Me" is checked
+      if (rememberMe && !autoLogin) {
+        await AsyncStorage.setItem('userInfo', JSON.stringify({ email: emailOrPhone, password }));
       }
 
       await AsyncStorage.setItem('userLoggedIn', JSON.stringify({
@@ -124,9 +133,16 @@ const LoginScreen = ({ navigation }) => {
               )}
 
               <View style={styles.rememberRow}>
-                <TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.checkboxContainer}
+                  onPress={() => setRememberMe(!rememberMe)}
+                >
+                  <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                    {rememberMe && <Icon name="checkmark" size={16} color="#FFF" />}
+                  </View>
                   <Text style={styles.rememberMe}>Remember me</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
                   <Text style={styles.forgotPassword}>Forgot Password?</Text>
                 </TouchableOpacity>
@@ -181,12 +197,12 @@ const styles = StyleSheet.create({
   logo: {
     width: 200,
     height: 200,
-    borderRadius:25,
+    borderRadius: 25,
     top: 50,
   },
   loginContainer: {
     width: '100%',
-   backgroundColor: '#81818199',
+    backgroundColor: '#81818199',
     borderTopLeftRadius: 50,
     borderTopRightRadius: 50,
     paddingVertical: 40,
@@ -216,6 +232,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
     marginBottom: 20,
+    alignItems: 'center',
   },
   rememberMe: {
     color: '#7C7A7A',
@@ -224,6 +241,23 @@ const styles = StyleSheet.create({
   forgotPassword: {
     color: '#F6EF00',
     fontSize: 14,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: '#F6EF00',
+    borderRadius: 4,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#F6EF00',
   },
   button: {
     width: '100%',
@@ -283,4 +317,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen
+export default LoginScreen;

@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, Animated } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, Animated, Image, ScrollView } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, firestore } from '../firebaseConfig';
 import Icon from 'react-native-vector-icons/Ionicons';
-import CombinedModal from './CombinedModal';
+import CombinedModal from './CombinedModal'; // Import the CombinedModal component
 import PhoneNumberModal from './PhoneNumberModal';
 import { doc, setDoc } from 'firebase/firestore';
 
@@ -15,7 +15,7 @@ const RegisterScreen = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [showCombinedModal, setShowCombinedModal] = useState(false);
+  const [showCombinedModal, setShowCombinedModal] = useState(false); // Modal visibility state
   const [showPhoneNumberModal, setShowPhoneNumberModal] = useState(false);
   const [userEmail, setUserEmail] = useState(null);
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -52,13 +52,10 @@ const RegisterScreen = ({ navigation }) => {
 
       console.log('User registered with email:', email);
 
-      // Use email directly as document ID
       const docRef = doc(firestore, 'users', email);
-
-      // Set initial user data with createdAt timestamp
       await setDoc(docRef, {
         email: email,
-        createdAt: new Date().toISOString(), // Add the timestamp here
+        createdAt: new Date().toISOString(),
       });
 
       setLoading(false);
@@ -86,11 +83,7 @@ const RegisterScreen = ({ navigation }) => {
     if (phoneNumber) {
       try {
         const docRef = doc(firestore, 'users', userEmail);
-
-        // Update Firestore with phone number
-        await setDoc(docRef, {
-          phoneNumber: phoneNumber,
-        }, { merge: true });
+        await setDoc(docRef, { phoneNumber: phoneNumber }, { merge: true });
 
         console.log('Phone number saved successfully.');
       } catch (error) {
@@ -101,183 +94,255 @@ const RegisterScreen = ({ navigation }) => {
     navigation.navigate('Passcode');
   };
 
-  const handleCheckboxPress = () => {
-    if (!termsAccepted) {
-      Alert.alert('Agreement Required', 'You need to agree to the terms and privacy policy first.');
-      return;
-    }
-    setTermsAccepted(!termsAccepted);
-  };
-
   const rotateInterpolate = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
   return (
-    <View style={styles.container}>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        onChangeText={(text) => setEmail(text)}
-        value={email}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder="Password"
-          onChangeText={(text) => setPassword(text)}
-          value={password}
-          secureTextEntry={!showPassword}
-          autoCapitalize="none"
+    <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      {/* Top Background */}
+      <View style={styles.topBackground}>
+        <Image
+          source={require('../assets/icon.png')} // Assuming this is your app icon
+          style={styles.logo}
         />
-        <TouchableOpacity
-          style={styles.toggleButton}
-          onPress={() => setShowPassword(!showPassword)}
-        >
-          <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color="#E0C55B" />
-        </TouchableOpacity>
       </View>
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder="Confirm Password"
-          onChangeText={(text) => setConfirmPassword(text)}
-          value={confirmPassword}
-          secureTextEntry={!showConfirmPassword}
-          autoCapitalize="none"
-        />
-        <TouchableOpacity
-          style={styles.toggleButton}
-          onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-        >
-          <Icon name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color="#E0C55B" />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.agreementContainer}>
-        <TouchableOpacity
-          style={[styles.customCheckbox, termsAccepted && styles.customCheckboxChecked]}
-          onPress={handleCheckboxPress}
-        >
-          {termsAccepted && <Icon name="checkmark" size={20} color="#FFF" />}
-        </TouchableOpacity>
-        <Text style={styles.agreementText}>
-          I agree to the <Text style={styles.link} onPress={() => setShowCombinedModal(true)}>Terms and Conditions</Text> and <Text style={styles.link} onPress={() => setShowCombinedModal(true)}>Privacy Policy</Text>.
-        </Text>
-      </View>
-      <TouchableOpacity
-        style={[styles.button, { opacity: loading ? 0.5 : 1 }]}
-        onPress={handleRegisterButtonPress}
-        disabled={loading}
-      >
-        {loading ? (
-          <Animated.View style={{ transform: [{ rotate: rotateInterpolate }] }}>
-            <Icon name="reload" size={24} color="#FFF" />
-          </Animated.View>
-        ) : (
-          <Text style={styles.buttonText}>Register</Text>
-        )}
-      </TouchableOpacity>
 
+      {/* Rounded Container for Registration */}
+      <View style={styles.registerContainer}>
+        <Text style={styles.title}>Create your Account</Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          onChangeText={(text) => setEmail(text)}
+          value={email}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          placeholderTextColor="#7C7A7A"
+        />
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            onChangeText={(text) => setPassword(text)}
+            value={password}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            placeholderTextColor="#7C7A7A"
+          />
+          <TouchableOpacity
+            style={styles.toggleButton}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color="#000" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Confirm Password"
+            onChangeText={(text) => setConfirmPassword(text)}
+            value={confirmPassword}
+            secureTextEntry={!showConfirmPassword}
+            autoCapitalize="none"
+            placeholderTextColor="#7C7A7A"
+          />
+          <TouchableOpacity
+            style={styles.toggleButton}
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+          >
+            <Icon name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color="#000" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.agreementContainer}>
+          <TouchableOpacity
+            style={[styles.customCheckbox, termsAccepted && styles.customCheckboxChecked]}
+            onPress={() => setTermsAccepted(!termsAccepted)}
+          >
+            {termsAccepted && <Icon name="checkmark" size={20} color="#FFF" />}
+          </TouchableOpacity>
+          <Text style={styles.agreementText}>
+            I agree to the{' '}
+            <Text style={styles.link} onPress={() => setShowCombinedModal(true)}>Terms and Conditions</Text>{' '}
+            and <Text style={styles.link} onPress={() => setShowCombinedModal(true)}>Privacy Policy</Text>.
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleRegisterButtonPress}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>Sign Up</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.orText}>or</Text>
+
+        {/* Google Sign In Button */}
+        <TouchableOpacity style={styles.googleSignIn}>
+          <Image 
+            source={require('../assets/google_logo.png')} // Make sure the path to your google_icon.png is correct
+            style={styles.googleIcon}
+          />
+          <Text style={styles.googleText}>Sign up with Google</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.registerText}>
+            Already have an account? <Text style={styles.signIn}>Sign In</Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* CombinedModal for Terms and Privacy Policy */}
       <CombinedModal
         visible={showCombinedModal}
         onAgree={handleTermsAgree}
         onClose={handleCombinedModalClose}
       />
-      {userEmail && (
-        <PhoneNumberModal
-          visible={showPhoneNumberModal}
-          onClose={handlePhoneNumberModalClose}
-          email={userEmail}
-        />
-      )}
-    </View>
+
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFAE6',
+    paddingVertical: 20,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFAE6',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  topBackground: {
+    width: '100%',
+    height: '35%',
+    backgroundColor: '#FFFAE6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: {
+    width: 200,
+    height: 200,
+    borderRadius: 25,
+    top: 50,
+  },
+  registerContainer: {
+    width: '100%',
+    backgroundColor: '#81818199', // Semi-transparent gray background
+    borderTopLeftRadius: 50,
+    borderTopRightRadius: 50,
+    paddingVertical: 40,
     paddingHorizontal: 20,
-    backgroundColor: '#545151',
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#3A3A3A',
+    marginBottom: 20,
   },
   input: {
     width: '100%',
     height: 50,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    backgroundColor: '#F1F1F1',
+    paddingHorizontal: 15,
+    marginVertical: 10,
+    color: '#333',
   },
   passwordContainer: {
     width: '100%',
     position: 'relative',
-    marginBottom: 20,
-  },
-  passwordInput: {
-    width: '100%',
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    backgroundColor: '#FFFFFF',
-    paddingRight: 50,
   },
   toggleButton: {
     position: 'absolute',
-    right: 10,
+    right: 15,
     top: '50%',
     transform: [{ translateY: -12 }],
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   button: {
     width: '100%',
     height: 50,
-    backgroundColor: '#E0C55B',
+    backgroundColor: '#F6EF00',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 8,
-    marginBottom: 10,
-    position: 'relative',
+    borderRadius: 25,
+    marginVertical: 10,
   },
   buttonText: {
+    color: '#000',
     fontSize: 18,
-    color: '#FFF',
+    fontWeight: 'bold',
   },
   agreementContainer: {
-    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginVertical: 15,
   },
   customCheckbox: {
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: '#E0C55B',
+    borderColor: '#F6EF00',
     borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
   },
   customCheckboxChecked: {
-    backgroundColor: '#E0C55B',
+    backgroundColor: '#F6EF00',
   },
   agreementText: {
     fontSize: 14,
-    color: '#FFF',
+    color: '#000',
   },
   link: {
-    color: '#E0C55B',
+    color: '#F6EF00', // Color for the clickable Terms and Conditions/Privacy Policy
+    fontWeight: 'bold',
+  },
+  orText: {
+    marginVertical: 10,
+    color: '#000',
+  },
+  googleSignIn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    borderRadius: 25,
+    height: 50,
+    width: 190,
+    marginVertical: 10,
+    backgroundColor: '#FFF',
+  },
+  googleIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 10,
+  },
+  googleText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  registerText: {
+    marginTop: 20,
+    color: '#7C7A7A',
+    fontSize: 14,
+  },
+  signIn: {
+    color: '#F6EF00',
+    fontWeight: 'bold',
   },
 });
 
