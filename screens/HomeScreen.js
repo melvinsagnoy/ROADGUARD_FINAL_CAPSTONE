@@ -27,12 +27,16 @@ import { ref, onValue, update, get, child, push, set, remove } from 'firebase/da
 import { database } from '../firebaseConfig';
 import { format } from 'date-fns';
 import { BackHandler } from 'react-native';
+import axios from 'axios';
+import WeatherHeader from './WeatherHeader'; // Import the WeatherHeader component
 
-
+const GOOGLE_API_KEY = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw';
 
 
 const HomeScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
   
+
+  const apiKey = 'b2529bcc950c7e261538c1ddb942c44e';
   const { colors } = useTheme();
   const [isCreatePostModalVisible, setCreatePostModalVisible] = useState(false);
   const [isMenuModalVisible, setMenuModalVisible] = useState(false);
@@ -162,6 +166,18 @@ const formatDate = (timestamp) => {
   }
 };
 
+const fetchAddress = async (latitude, longitude) => {
+    try {
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`
+      );
+      const address = response.data.results[0].formatted_address;
+      return address;
+    } catch (error) {
+      console.error('Error fetching address:', error);
+      return 'Address not available';
+    }
+  };
 
   const openCommentModal = (postId) => {
   console.log('Opening comment modal for Post ID:', postId); // Add this line to debug
@@ -223,21 +239,26 @@ const submitComment = async () => {
   const fetchAllPosts = async () => {
   try {
     const postsRef = ref(database, 'posts');
-    onValue(postsRef, (snapshot) => {
+    onValue(postsRef, async (snapshot) => {
       const postsData = snapshot.val();
       if (postsData) {
-        let postsArray = Object.keys(postsData).map(key => ({
-          id: key,
-          ...postsData[key],
-          photoURL: postsData[key]?.photoURL || 'https://via.placeholder.com/50',
-        }));
+        let postsArray = await Promise.all(
+          Object.keys(postsData).map(async (key) => {
+            const post = postsData[key];
+            let address = 'Location not available';
+            if (post.location) {
+              address = await fetchAddress(post.location.latitude, post.location.longitude);
+            }
+            return {
+              id: key,
+              ...post,
+              address, // Add the fetched address to the post data
+            };
+          })
+        );
 
-        // Sort posts based on selected filter
-        if (filter === 'newest') {
-          postsArray.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        } else if (filter === 'popular') {
-          postsArray.sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
-        }
+        // Sort posts by 'createdAt' in descending order (latest posts first)
+        postsArray.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         setPosts(postsArray);
       } else {
@@ -315,7 +336,7 @@ const handleVote = async (postId, voteType) => {
     return;
   }
 
-  const sanitizedEmail = sanitizeKey(userEmail);
+  const sanitizedEmail = sanitizeKey(userEmail); // Remove invalid characters
 
   try {
     const postSnapshot = await get(postRef);
@@ -371,20 +392,31 @@ const handleVote = async (postId, voteType) => {
       updatedVoters[sanitizedEmail] = voteType;
     }
 
-    // Update the post in Realtime Database
-    await update(postRef, {
-      upvotes: updatedUpvotes,
-      downvotes: updatedDownvotes,
-      voters: updatedVoters,
-    });
+    // Check if downvotes have reached 5
+    if (updatedDownvotes >= 5) {
+      // Delete the post
+      await remove(postRef);
+      console.log('Post has been deleted due to 5 downvotes.');
 
-    // Update local state
-    setPosts((prevPosts) =>
-  prevPosts.map((post) =>
-    post.id === selectedPostId ? { ...post, ...editedContent } : post
-  )
-);
+      // Update local state by removing the deleted post
+      setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postId));
+    } else {
+      // Update the post in Realtime Database
+      await update(postRef, {
+        upvotes: updatedUpvotes,
+        downvotes: updatedDownvotes,
+        voters: updatedVoters,
+      });
 
+      // Update local state
+      setPosts((prevPosts) =>
+        prevPosts.map((post) =>
+          post.id === postId
+            ? { ...post, upvotes: updatedUpvotes, downvotes: updatedDownvotes, voters: updatedVoters }
+            : post
+        )
+      );
+    }
   } catch (error) {
     console.error('Error handling vote:', error);
   } finally {
@@ -447,8 +479,8 @@ const handleDeletePost = async (postId) => {
             {post.displayName}
           </Text>
           {post.location ? (
-            <Text style={[styles.feedLocation, { color: colors.text }]}>
-              Location: {post.location.latitude}, {post.location.longitude}
+            <Text style={styles.feedLocation}>
+              {post.address ? post.address : 'Location not available'}
             </Text>
           ) : (
             <Text style={[styles.feedLocation, { color: colors.text }]}>
@@ -589,6 +621,9 @@ const handleDeletePost = async (postId) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={styles.weatherHeaderContainer}>
+    <WeatherHeader apiKey={apiKey} latitude={10.3157} longitude={123.8854} />
+  </View>
     {isLoading && (
       <View style={styles.loadingOverlay}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -706,6 +741,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff', // Default background color
   },
+  weatherHeaderContainer: {
+  paddingTop: 10,
+  paddingHorizontal: 20, // Light background for visibility
+  borderBottomWidth: 2,
+  borderBottomColor: '#dedede',
+  top: 100
+},
+
   commentItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',

@@ -12,34 +12,30 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useTheme } from 'react-native-paper';
 import { format } from 'date-fns';
 import { ref, onValue, get, push, set, update } from 'firebase/database';
-import { database } from '../firebaseConfig';
+import { database, auth, firestore } from '../firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
-const PostDetailsScreen = ({ route, navigation }) => {
+const PostDetail = ({ route, navigation }) => {
   const { colors } = useTheme();
   const [post, setPost] = useState({});
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
-  const [user, setUser] = useState(null); // You'll need to get the current user
-  const [userData, setUserData] = useState({}); // Fetch user data as needed
+  const [userData, setUserData] = useState({});
 
   useEffect(() => {
+    // Fetch the post details
     const fetchPostDetails = async () => {
-      const postId = route.params?.postId; // Get postId from route params
-      console.log('Post ID:', postId); // Debugging line
-      if (!postId) {
-        console.error('Post ID is missing');
-        return;
-      }
+      const postId = route.params?.postId;
+      if (!postId) return;
 
       const postRef = ref(database, `posts/${postId}`);
       const snapshot = await get(postRef);
       if (snapshot.exists()) {
         setPost({ id: snapshot.key, ...snapshot.val() });
-      } else {
-        console.error('Post not found');
       }
     };
 
+    // Fetch the comments for the post
     const fetchComments = () => {
       const commentsRef = ref(database, `posts/${route.params?.postId}/comments`);
       onValue(commentsRef, (snapshot) => {
@@ -48,32 +44,77 @@ const PostDetailsScreen = ({ route, navigation }) => {
       });
     };
 
+    // Fetch user data from Firestore
+    const fetchUserData = async () => {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const userDocRef = doc(firestore, `users/${currentUser.email}`);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          setUserData(userDoc.data());
+        }
+      }
+    };
+
     fetchPostDetails();
     fetchComments();
+    fetchUserData();
   }, [route.params]);
 
+  // Submit a comment
   const submitComment = async () => {
     if (!commentText.trim()) return;
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      console.error('User not logged in');
+      return;
+    }
 
     const commentRef = push(ref(database, `posts/${post.id}/comments`));
     await set(commentRef, {
       text: commentText,
-      userId: user?.email,
+      userId: currentUser?.email,
       displayName: userData.displayName || 'Anonymous',
+      profileImage: userData.photoURL || 'https://via.placeholder.com/30',
       createdAt: Date.now(),
     });
 
-    setCommentText('');
+    setCommentText(''); // Reset the input
   };
 
+  // Handle upvote
   const handleUpvote = async () => {
-    const postRef = ref(database, `posts/${post.id}`);
-    await update(postRef, { upvotes: (post.upvotes || 0) + 1 });
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const userUpvoteRef = ref(database, `posts/${post.id}/upvotes/${currentUser.uid}`);
+    const upvoteSnapshot = await get(userUpvoteRef);
+
+    if (!upvoteSnapshot.exists()) {
+      const postRef = ref(database, `posts/${post.id}`);
+      await update(postRef, { upvotes: (post.upvotes || 0) + 1 });
+
+      // Track that the user has upvoted
+      await set(userUpvoteRef, true);
+    }
   };
 
+  // Handle downvote
   const handleDownvote = async () => {
-    const postRef = ref(database, `posts/${post.id}`);
-    await update(postRef, { downvotes: (post.downvotes || 0) + 1 });
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const userDownvoteRef = ref(database, `posts/${post.id}/downvotes/${currentUser.uid}`);
+    const downvoteSnapshot = await get(userDownvoteRef);
+
+    if (!downvoteSnapshot.exists()) {
+      const postRef = ref(database, `posts/${post.id}`);
+      await update(postRef, { downvotes: (post.downvotes || 0) + 1 });
+
+      // Track that the user has downvoted
+      await set(userDownvoteRef, true);
+    }
   };
 
   const formatDate = (timestamp) => {
@@ -90,6 +131,14 @@ const PostDetailsScreen = ({ route, navigation }) => {
 
   return (
     <ScrollView style={styles.container}>
+      {/* Back Button */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <MaterialIcons name="arrow-back" size={30} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerText}>Post Details</Text>
+      </View>
+
       <View style={styles.feedItem}>
         <View style={styles.feedHeader}>
           <Image
@@ -98,7 +147,7 @@ const PostDetailsScreen = ({ route, navigation }) => {
           />
           <View style={styles.feedHeaderText}>
             <Text style={[styles.feedAuthor, { color: colors.text }]}>
-              {post.displayName || 'Unknown User'}
+              {typeof post.displayName === 'string' ? post.displayName : 'Unknown User'}
             </Text>
             {post.location ? (
               <Text style={[styles.feedLocation, { color: colors.text }]}>
@@ -117,46 +166,44 @@ const PostDetailsScreen = ({ route, navigation }) => {
             <Image source={{ uri: post.imageURL }} style={styles.feedImage} />
           ) : null}
           <Text style={[styles.feedTitle, { color: colors.text }]}>
-            {post.title || 'No title'}
+            {typeof post.title === 'string' ? post.title : 'No title'}
           </Text>
           <Text style={[styles.feedBody, { color: colors.text }]}>
-            {post.body || 'No content available.'}
+            {typeof post.body === 'string' ? post.body : 'No content available.'}
           </Text>
           <Text style={styles.postDate}>
             {formatDate(post.createdAt || Date.now())}
           </Text>
         </View>
-
-        <View style={styles.voteSection}>
-          <TouchableOpacity onPress={handleUpvote} style={styles.voteButton}>
-            <MaterialIcons name="thumb-up" size={24} color="blue" />
-            <Text style={styles.voteCount}>{post.upvotes || 0}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleDownvote} style={styles.voteButton}>
-            <MaterialIcons name="thumb-down" size={24} color="red" />
-            <Text style={styles.voteCount}>{post.downvotes || 0}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Render comments */}
-        {comments.map((comment, index) => (
-          <View key={index} style={styles.commentItem}>
-            <Image
-              source={{ uri: comment.photoURL || 'https://via.placeholder.com/30' }}
-              style={styles.commentProfileIcon}
-            />
-            <View style={styles.commentTextContainer}>
-              <Text style={styles.commentUserName}>
-                {comment.displayName || 'Anonymous'}
-              </Text>
-              <Text style={styles.commentText}>{comment.text}</Text>
-              <Text style={styles.commentDate}>
-                {formatDate(comment.createdAt)}
-              </Text>
-            </View>
-          </View>
-        ))}
       </View>
+
+      <View style={styles.voteSection}>
+        <TouchableOpacity onPress={handleUpvote} style={styles.voteButton}>
+          <MaterialIcons name="thumb-up" size={24} color="blue" />
+          <Text style={styles.voteCount}>{post.upvotes || 0}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleDownvote} style={styles.voteButton}>
+          <MaterialIcons name="thumb-down" size={24} color="red" />
+          <Text style={styles.voteCount}>{post.downvotes || 0}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Render comments */}
+      {comments.map((comment, index) => (
+        <View key={index} style={styles.commentItem}>
+          <Image
+            source={{ uri: comment.profileImage || 'https://via.placeholder.com/30' }}
+            style={styles.commentProfileIcon}
+          />
+          <View style={styles.commentTextContainer}>
+            <Text style={styles.commentUserName}>
+              {typeof comment.displayName === 'string' ? comment.displayName : 'Anonymous'}
+            </Text>
+            <Text style={styles.commentText}>{comment.text}</Text>
+            <Text style={styles.commentDate}>{formatDate(comment.createdAt)}</Text>
+          </View>
+        </View>
+      ))}
 
       {/* Comment input */}
       <View style={styles.commentInputContainer}>
@@ -179,6 +226,21 @@ const styles = StyleSheet.create({
     top: 50,
     flex: 1,
     backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  backButton: {
+    marginRight: 10,
+  },
+  headerText: {
+    fontSize: 20,
+    fontWeight: 'bold',
   },
   feedItem: {
     padding: 15,
@@ -285,4 +347,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default PostDetailsScreen;
+export default PostDetail;

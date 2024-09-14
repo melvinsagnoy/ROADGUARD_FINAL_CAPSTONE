@@ -1,7 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Animated, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Animated, Image, Dimensions } from 'react-native';
 import { firestore, auth } from '../firebaseConfig';
-import { doc, setDoc, updateDoc } from 'firebase/firestore'; 
+import { doc, updateDoc } from 'firebase/firestore'; 
+
+const { width } = Dimensions.get('window');
 
 const PasscodeInputScreen = ({ navigation, route }) => {
   const [passcode, setPasscode] = useState('');
@@ -9,11 +11,8 @@ const PasscodeInputScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [storedPasscode, setStoredPasscode] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState(route.params?.phoneNumber || ''); // Add state for phone number
   const maxDigits = 4;
   const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  const email = route.params?.email || '';
 
   const handleNumberPress = (number) => {
     if (isConfirming) {
@@ -40,59 +39,58 @@ const PasscodeInputScreen = ({ navigation, route }) => {
   };
 
   const handleConfirmPress = async () => {
-  if (isConfirming) {
-    if (confirmPasscode.length === maxDigits) {
-      if (confirmPasscode === storedPasscode) {
-        setLoading(true);
-        Animated.loop(
-          Animated.timing(rotateAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          })
-        ).start();
-        
-        try {
-          const user = auth.currentUser;
-          if (!user) {
-            throw new Error('User not authenticated');
+    if (isConfirming) {
+      if (confirmPasscode.length === maxDigits) {
+        if (confirmPasscode === storedPasscode) {
+          setLoading(true);
+          Animated.loop(
+            Animated.timing(rotateAnim, {
+              toValue: 1,
+              duration: 1000,
+              useNativeDriver: true,
+            })
+          ).start();
+
+          try {
+            const user = auth.currentUser;
+            if (!user) {
+              throw new Error('User not authenticated');
+            }
+
+            const email = user.email;
+            const userDocRef = doc(firestore, 'users', email);
+
+            await updateDoc(userDocRef, {
+              passcode: storedPasscode,
+            });
+
+            setLoading(false);
+            navigation.navigate('ProfileUpdate');
+          } catch (error) {
+            setLoading(false);
+            console.error('Error registering passcode:', error);
+            Alert.alert('Registration Error', 'Failed to register passcode.');
           }
-
-          const email = user.email; // Ensure this is valid and non-empty.
-          const userDocRef = doc(firestore, 'users', email); // Ensure this is correctly formed.
-
-          // Update only the passcode field, preserving existing phoneNumber and needsProfileUpdate
-          await updateDoc(userDocRef, { 
-            passcode: storedPasscode
-          });
-
-          setLoading(false);
-          navigation.navigate('ProfileUpdate');
-        } catch (error) {
-          setLoading(false);
-          console.error('Error registering passcode:', error);
-          Alert.alert('Registration Error', 'Failed to register passcode.');
+        } else {
+          Alert.alert('Passcode Mismatch', 'The passcodes do not match.');
+          setPasscode('');
+          setConfirmPasscode('');
+          setStoredPasscode('');
+          setIsConfirming(false);
         }
       } else {
-        Alert.alert('Passcode Mismatch', 'The passcodes do not match.');
-        setPasscode('');
-        setConfirmPasscode('');
-        setStoredPasscode('');
-        setIsConfirming(false);
+        Alert.alert('Incomplete Passcode', 'Please enter 4 digits.');
       }
     } else {
-      Alert.alert('Incomplete Passcode', 'Please enter 4 digits.');
+      if (passcode.length === maxDigits) {
+        setStoredPasscode(passcode);
+        setIsConfirming(true);
+        setPasscode('');
+      } else {
+        Alert.alert('Incomplete Passcode', 'Please enter 4 digits.');
+      }
     }
-  } else {
-    if (passcode.length === maxDigits) {
-      setStoredPasscode(passcode);
-      setIsConfirming(true);
-      setPasscode('');
-    } else {
-      Alert.alert('Incomplete Passcode', 'Please enter 4 digits.');
-    }
-  }
-};
+  };
 
   const rotateInterpolate = rotateAnim.interpolate({
     inputRange: [0, 1],
@@ -101,10 +99,11 @@ const PasscodeInputScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{isConfirming ? 'Confirm Passcode' : 'Set Passcode'}</Text>
+      <Image source={require('../assets/icon.png')} style={styles.logo} />
+      <Text style={styles.title}>Enter Passcode</Text>
       <View style={styles.passcodeContainer}>
         {Array.from({ length: maxDigits }).map((_, index) => (
-          <View key={index} style={[styles.passcodeCircle, (isConfirming ? confirmPasscode : passcode).length > index && styles.passcodeFilled]} />
+          <View key={index} style={[styles.passcodeCircle, passcode.length > index && styles.passcodeFilled]} />
         ))}
       </View>
       <View style={styles.numberGrid}>
@@ -113,20 +112,20 @@ const PasscodeInputScreen = ({ navigation, route }) => {
             <Text style={styles.numberText}>{number}</Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity style={styles.numberButton} onPress={handleDeletePress}>
-          <Text style={styles.numberText}>DEL</Text>
+        <TouchableOpacity style={styles.numberButton} onPress={() => handleDeletePress()}>
+          <Text style={styles.numberText}>⟵</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.numberButton} onPress={() => handleNumberPress('0')}>
           <Text style={styles.numberText}>0</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmPress} disabled={loading}>
+      <TouchableOpacity style={styles.verifyButton} onPress={handleConfirmPress} disabled={loading}>
         {loading ? (
           <Animated.View style={[styles.loadingContainer, { transform: [{ rotate: rotateInterpolate }] }]}>
             <Image source={require('../assets/tire.png')} style={styles.loadingImage} />
           </Animated.View>
         ) : (
-          <Text style={styles.confirmButtonText}>{isConfirming ? 'Confirm' : 'Next'}</Text>
+          <Text style={styles.verifyButtonText}>Verify</Text>
         )}
       </TouchableOpacity>
     </View>
@@ -138,28 +137,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#545151',
+    backgroundColor: '#f8f4e4',
+  },
+  logo: {
+    width: width * 0.4,
+    height: width * 0.4,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 30,
+    fontSize: 22,
+    color: '#333',
+    marginBottom: 10,
   },
   passcodeContainer: {
     flexDirection: 'row',
     marginBottom: 20,
   },
   passcodeCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E0C55B',
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    borderWidth: 2,
+    borderColor: '#000',
     marginHorizontal: 10,
   },
   passcodeFilled: {
-    backgroundColor: '#E0C55B',
+    backgroundColor: '#333',
   },
   numberGrid: {
     flexDirection: 'row',
@@ -169,30 +172,28 @@ const styles = StyleSheet.create({
     width: '80%',
   },
   numberButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderColor: '#E0C55B',
+    width: width * 0.2,
+    height: width * 0.2,
     justifyContent: 'center',
     alignItems: 'center',
-    margin: 15,
+    margin: 10,
+    borderRadius: width * 0.1,
+    backgroundColor: '#ddd',
   },
   numberText: {
     fontSize: 24,
-    color: 'white',
+    color: '#000',
   },
-  confirmButton: {
+  verifyButton: {
     width: '80%',
     height: 50,
-    backgroundColor: '#E0C55B',
+    backgroundColor: '#f7c02b',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
+    borderRadius: 10,
     marginTop: 20,
-    position: 'relative',
   },
-  confirmButtonText: {
+  verifyButtonText: {
     fontSize: 18,
     color: '#000',
   },

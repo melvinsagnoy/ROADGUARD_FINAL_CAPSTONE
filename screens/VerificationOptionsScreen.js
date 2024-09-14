@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { auth } from '../firebaseConfig';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Import icon library
@@ -58,10 +58,10 @@ const VerificationOptionsScreen = ({ navigation }) => {
       <Text style={styles.title}>Choose Verification Method</Text>
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.optionButton} onPress={handleFingerprintVerify}>
-          <Icon name="fingerprint" size={90} color="#E0C55B" />
+          <Icon name="fingerprint" size={90} color="black" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.optionButton} onPress={handlePasscodeVerify}>
-          <Icon name="lock" size={90} color="#E0C55B" />
+          <Icon name="lock" size={90} color="black" />
         </TouchableOpacity>
       </View>
     </View>
@@ -71,14 +71,14 @@ const VerificationOptionsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#FFFAE6',
     alignItems: 'center',
-    backgroundColor: '#545151',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#3A3A3A',
     marginBottom: 30,
   },
   buttonContainer: {
@@ -87,9 +87,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', // Center the buttons vertically
   },
   optionButton: {
+    backgroundColor: '#F6EF00', // Yellow background to match Login button
     paddingVertical: 15,
     paddingHorizontal: 25,
-    borderRadius: 8,
+    borderRadius: 25,
     marginHorizontal: 10, // Space between buttons
     justifyContent: 'center',
     alignItems: 'center',

@@ -63,52 +63,52 @@ const CommentModal = ({ visible, onClose, postId }) => {
   }, [postId]);
 
   const handleSubmit = async () => {
-    if (comment.trim()) {
-      setCommentLoading(true); // Start loading
+  if (comment.trim()) {
+    setCommentLoading(true); // Start loading
 
-      try {
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-          console.error('No user is currently logged in.');
-          setCommentLoading(false); // Stop loading
-          return;
-        }
-
-        const userEmail = currentUser.email;
-        const userDocRef = doc(firestore, `users/${userEmail}`);
-        const userDoc = await getDoc(userDocRef);
-
-        if (!userDoc.exists()) {
-          console.error('User profile does not exist:', userEmail);
-          setCommentLoading(false); // Stop loading
-          return;
-        }
-
-        const userData = userDoc.data();
-        const newCommentRef = ref(database, `posts/${postId}/comments/${Date.now()}`);
-
-        await set(newCommentRef, {
-          text: comment,
-          createdAt: Date.now(),
-          displayName: userData.displayName || 'Anonymous',
-          profileImage: userData.photoURL || '',
-          replies: {} // Initialize replies field
-        });
-
-        setComment('');
-        setSuccessMessage('Comment added successfully!');
-        onClose();
-
-        setTimeout(() => {
-          setSuccessMessage('');
-        }, 3000);
-      } catch (error) {
-        console.error('Error adding comment:', error.message || error);
-      } finally {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.error('No user is currently logged in.');
         setCommentLoading(false); // Stop loading
+        return;
       }
+
+      const userEmail = currentUser.email;
+      const userDocRef = doc(firestore, `users/${userEmail}`);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        console.error('User profile does not exist:', userEmail);
+        setCommentLoading(false); // Stop loading
+        return;
+      }
+
+      const userData = userDoc.data();
+      const newCommentRef = ref(database, `posts/${postId}/comments/${Date.now()}`);
+
+      await set(newCommentRef, {
+        text: comment,
+        createdAt: Date.now(),
+        displayName: userData.displayName || 'Anonymous',
+        profileImage: userData.photoURL || 'https://via.placeholder.com/30', // Ensure this is set
+        replies: {}, // Initialize replies field
+      });
+
+      setComment(''); // Reset comment field
+      setSuccessMessage('Comment added successfully!');
+      onClose();
+
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+    } catch (error) {
+      console.error('Error adding comment:', error.message || error);
+    } finally {
+      setCommentLoading(false); // Stop loading
     }
-  };
+  }
+};
 
   const handleReplySubmit = async (parentId) => {
     if (comment.trim()) {
@@ -187,94 +187,94 @@ const CommentModal = ({ visible, onClose, postId }) => {
   );
 
   const renderComment = ({ item }) => {
-    const replies = Object.values(item.replies || {});
-    const visibleReplies = expandedReplies[item.id] ? replies : replies.slice(0, 3);
+  const replies = Object.values(item.replies || {});
+  const visibleReplies = expandedReplies[item.id] ? replies : replies.slice(0, 3);
 
-    return (
-      <View style={styles.commentContainer}>
-        <View style={styles.commentHeader}>
-          {item.profileImage ? (
-            <Image
-              source={{ uri: item.profileImage }}
-              style={styles.profileImage}
-              onError={(error) => console.error('Image Load Error:', error.nativeEvent.error)}
-            />
-          ) : (
-            <View style={styles.profileImagePlaceholder} />
-          )}
-          <View style={styles.commentContent}>
-            <Text style={styles.commentAuthor}>{item.displayName || 'Anonymous'}</Text>
-            <Text style={styles.commentText}>{item.text}</Text>
-            <Text style={styles.commentTime}>{formatDate(item.createdAt)}</Text>
-            <TouchableOpacity
-              style={styles.replyButton}
-              onPress={() => {
-                if (showReplyInput === item.id) {
-                  setShowReplyInput(null); // Hide reply input if already open
-                } else {
-                  setReplyingTo(item.id);
-                  setShowReplyInput(item.id); // Manage reply input visibility for the selected comment
-                }
-              }}
-            >
-              <Text style={styles.replyButtonText}>Reply</Text>
-            </TouchableOpacity>
-            {showReplyInput === item.id && (
-              <View style={styles.replyInputContainer}>
-                {replyingTo && (
-                  <Text style={styles.replyToLabel}>Replying to {item.displayName || 'Anonymous'}</Text>
-                )}
-                <View style={styles.replyInputWrapper}>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Write a reply..."
-                    value={comment}
-                    onChangeText={setComment}
-                  />
-                  <TouchableOpacity
-                    style={styles.sendButton}
-                    onPress={() => handleReplySubmit(item.id)}
-                    disabled={replyLoading[item.id]} // Disable button when loading
-                  >
-                    {replyLoading[item.id] ? (
-                      <ActivityIndicator size="small" color="#007AFF" />
-                    ) : (
-                      <Icon name="send" size={20} color="#007AFF" />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-            {item.replies && (
-              <>
-                <FlatList
-                  data={visibleReplies}
-                  renderItem={renderReply}
-                  keyExtractor={(reply) => reply.createdAt.toString()} // Unique key based on timestamp
-                  style={styles.repliesList}
+  return (
+    <View style={styles.commentContainer}>
+      <View style={styles.commentHeader}>
+        {item.profileImage ? (
+          <Image
+            source={{ uri: item.profileImage }} // Ensure the profile image is used
+            style={styles.profileImage}
+            onError={(error) => console.error('Image Load Error:', error.nativeEvent.error)}
+          />
+        ) : (
+          <View style={styles.profileImagePlaceholder} />
+        )}
+        <View style={styles.commentContent}>
+          <Text style={styles.commentAuthor}>{item.displayName || 'Anonymous'}</Text>
+          <Text style={styles.commentText}>{item.text}</Text>
+          <Text style={styles.commentTime}>{formatDate(item.createdAt)}</Text>
+          <TouchableOpacity
+            style={styles.replyButton}
+            onPress={() => {
+              if (showReplyInput === item.id) {
+                setShowReplyInput(null); // Hide reply input if already open
+              } else {
+                setReplyingTo(item.id);
+                setShowReplyInput(item.id); // Manage reply input visibility for the selected comment
+              }
+            }}
+          >
+            <Text style={styles.replyButtonText}>Reply</Text>
+          </TouchableOpacity>
+          {showReplyInput === item.id && (
+            <View style={styles.replyInputContainer}>
+              {replyingTo && (
+                <Text style={styles.replyToLabel}>Replying to {item.displayName || 'Anonymous'}</Text>
+              )}
+              <View style={styles.replyInputWrapper}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Write a reply..."
+                  value={comment}
+                  onChangeText={setComment}
                 />
-                {replies.length > 3 && (
-                  <TouchableOpacity
-                    style={styles.viewMoreButton}
-                    onPress={() => {
-                      setExpandedReplies(prevState => ({
-                        ...prevState,
-                        [item.id]: !prevState[item.id], // Toggle expansion state for the selected comment
-                      }));
-                    }}
-                  >
-                    <Text style={styles.viewMoreText}>
-                      {expandedReplies[item.id] ? 'View Less' : `View ${replies.length - 3} More Replies`}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </View>
+                <TouchableOpacity
+                  style={styles.sendButton}
+                  onPress={() => handleReplySubmit(item.id)}
+                  disabled={replyLoading[item.id]} // Disable button when loading
+                >
+                  {replyLoading[item.id] ? (
+                    <ActivityIndicator size="small" color="#007AFF" />
+                  ) : (
+                    <Icon name="send" size={20} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          {item.replies && (
+            <>
+              <FlatList
+                data={visibleReplies}
+                renderItem={renderReply}
+                keyExtractor={(reply) => reply.createdAt.toString()} // Unique key based on timestamp
+                style={styles.repliesList}
+              />
+              {replies.length > 3 && (
+                <TouchableOpacity
+                  style={styles.viewMoreButton}
+                  onPress={() => {
+                    setExpandedReplies(prevState => ({
+                      ...prevState,
+                      [item.id]: !prevState[item.id], // Toggle expansion state for the selected comment
+                    }));
+                  }}
+                >
+                  <Text style={styles.viewMoreText}>
+                    {expandedReplies[item.id] ? 'View Less' : `View ${replies.length - 3} More Replies`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </View>
       </View>
-    );
-  };
+    </View>
+  );
+};
 
   return (
     <Modal

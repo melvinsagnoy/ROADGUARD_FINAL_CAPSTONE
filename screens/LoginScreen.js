@@ -5,8 +5,6 @@ import * as yup from 'yup';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
-import { getFirestore, collection, query, where, getDocs } from 'firebase/firestore';
-import { firestore } from '../firebaseConfig';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const loginValidationSchema = yup.object().shape({
@@ -17,6 +15,7 @@ const loginValidationSchema = yup.object().shape({
 const LoginScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [initialValues, setInitialValues] = useState({ emailOrPhone: '', password: '' });
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   const [fontsLoaded] = useFonts({
@@ -24,45 +23,54 @@ const LoginScreen = ({ navigation }) => {
   });
 
   useEffect(() => {
-    const checkUserLoggedIn = async () => {
-      const userInfo = await AsyncStorage.getItem('userInfo');
-      if (userInfo) {
-        const { email, password } = JSON.parse(userInfo);
-        handleLogin(email, password, true); // Automatically login if user was remembered
+    const checkUserStatus = async () => {
+      try {
+        const userLoggedIn = await AsyncStorage.getItem('userLoggedIn');
+        if (userLoggedIn) {
+          navigation.navigate('VerificationOptions');
+        }
+      } catch (error) {
+        console.error('Error checking user status', error);
       }
     };
-    checkUserLoggedIn();
+
+    checkUserStatus();
+  }, [navigation]);
+
+  useEffect(() => {
+    const loadCredentials = async () => {
+      try {
+        const savedUserInfo = await AsyncStorage.getItem('userInfo');
+        const savedRememberMe = await AsyncStorage.getItem('rememberMe');
+        
+        if (savedUserInfo && savedRememberMe === 'true') {
+          const { emailOrPhone, password } = JSON.parse(savedUserInfo);
+          setInitialValues({ emailOrPhone, password });
+          setRememberMe(true); // Set the checkbox to checked
+        }
+      } catch (error) {
+        console.error('Error loading credentials', error);
+      }
+    };
+
+    loadCredentials();
   }, []);
 
-  const handleLogin = async (emailOrPhone, password, autoLogin = false) => {
+  const handleLogin = async (emailOrPhone, password) => {
     setLoading(true);
     const auth = getAuth();
-    const db = getFirestore(); 
 
     try {
-      let userCredential;
-      let userEmail = emailOrPhone;
+      const userCredential = await signInWithEmailAndPassword(auth, emailOrPhone, password);
 
-      if (emailOrPhone.includes('@')) {
-        userCredential = await signInWithEmailAndPassword(auth, emailOrPhone, password);
+      // Store credentials and rememberMe status in AsyncStorage if "Remember Me" is checked
+      if (rememberMe) {
+        await AsyncStorage.setItem('userInfo', JSON.stringify({ emailOrPhone, password }));
+        await AsyncStorage.setItem('rememberMe', 'true');
       } else {
-        const usersCollectionRef = collection(db, 'users');
-        const q = query(usersCollectionRef, where('phoneNumber', '==', emailOrPhone));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-          throw new Error('No user found with this phone number.');
-        }
-
-        const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data();
-        userEmail = userData.email;
-        userCredential = await signInWithEmailAndPassword(auth, userEmail, password);
-      }
-
-      // Store credentials in AsyncStorage if "Remember Me" is checked
-      if (rememberMe && !autoLogin) {
-        await AsyncStorage.setItem('userInfo', JSON.stringify({ email: emailOrPhone, password }));
+        // Clear stored credentials if "Remember Me" is not checked
+        await AsyncStorage.removeItem('userInfo');
+        await AsyncStorage.setItem('rememberMe', 'false');
       }
 
       await AsyncStorage.setItem('userLoggedIn', JSON.stringify({
@@ -74,6 +82,22 @@ const LoginScreen = ({ navigation }) => {
     } catch (error) {
       setLoading(false);
       Alert.alert('Login Error', error.message);
+    }
+  };
+
+  const handleLogout = async () => {
+    const auth = getAuth();
+    try {
+      await auth.signOut();
+      // Clear credentials only if "Remember Me" was not checked
+      const savedRememberMe = await AsyncStorage.getItem('rememberMe');
+      if (savedRememberMe !== 'true') {
+        await AsyncStorage.removeItem('userInfo');
+      }
+      await AsyncStorage.removeItem('userLoggedIn'); // Clear logged-in status
+      navigation.navigate('Login'); // Navigate to login screen
+    } catch (error) {
+      console.error('Error during logout', error);
     }
   };
 
@@ -101,7 +125,8 @@ const LoginScreen = ({ navigation }) => {
         <Text style={styles.welcomeText}>Welcome back!</Text>
         <Formik
           validationSchema={loginValidationSchema}
-          initialValues={{ emailOrPhone: '', password: '' }}
+          initialValues={initialValues}
+          enableReinitialize={true}  // Important: Ensures Formik re-initializes with new values
           onSubmit={(values) => handleLogin(values.emailOrPhone, values.password)}
         >
           {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (

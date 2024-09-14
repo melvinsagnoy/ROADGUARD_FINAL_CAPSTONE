@@ -245,19 +245,16 @@ const closeClaimingFormModal = () => {
 
   const handleLogout = async () => {
   try {
-    // Remove all saved items from AsyncStorage
-    await AsyncStorage.clear();
-
-    // Sign the user out
+    await AsyncStorage.removeItem('userLoggedIn'); // Clear login persistence but keep credentials if "Remember Me" is checked
     await auth.signOut();
-
-    // Navigate back to the Login screen
-    navigation.navigate('Landing');
+    navigation.navigate('Landing'); // Navigate back to login
   } catch (error) {
     console.error('Error logging out:', error);
     Alert.alert('Error', 'Failed to log out. Please try again.');
   }
 };
+
+
 
   const updateDisplayName = async () => {
     try {
