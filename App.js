@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
+import { useColorScheme } from 'react-native';
 import { Provider as PaperProvider, DefaultTheme, DarkTheme } from 'react-native-paper';
 import AuthNavigator from './navigation/AuthNavigator';
-import { useNavigationContainerRef } from '@react-navigation/native';
-import { useColorScheme } from 'react-native';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
@@ -11,7 +10,6 @@ import axios from 'axios';
 const App = () => {
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
-  const navigationRef = useNavigationContainerRef();
 
   useEffect(() => {
     requestNotificationPermissions();
@@ -37,9 +35,7 @@ const App = () => {
   }
 
   const handleNotificationClick = (data) => {
-    if (data?.screen) {
-      navigationRef.current?.navigate(data.screen, data.params);
-    }
+    // Assuming navigation without refs, you may need a context or other global state management
   };
 
   const WEATHER_TASK = 'background-weather-task';
@@ -92,7 +88,7 @@ const App = () => {
 
   return (
     <PaperProvider theme={theme}>
-      <AuthNavigator ref={navigationRef} />
+      <AuthNavigator />
     </PaperProvider>
   );
 };
