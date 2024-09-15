@@ -11,7 +11,7 @@ import {
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useTheme } from 'react-native-paper';
 import { format } from 'date-fns';
-import { ref, onValue, get, push, set, update } from 'firebase/database';
+import { ref, onValue, get, push, set, update, remove } from 'firebase/database';
 import { database, auth, firestore } from '../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -21,13 +21,13 @@ const PostDetail = ({ route, navigation }) => {
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
   const [userData, setUserData] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Fetch the post details
-    const fetchPostDetails = async () => {
-      const postId = route.params?.postId;
-      if (!postId) return;
+    const postId = route.params?.postId;
+    if (!postId) return;
 
+    const fetchPostDetails = async () => {
       const postRef = ref(database, `posts/${postId}`);
       const snapshot = await get(postRef);
       if (snapshot.exists()) {
@@ -35,16 +35,14 @@ const PostDetail = ({ route, navigation }) => {
       }
     };
 
-    // Fetch the comments for the post
-    const fetchComments = () => {
-      const commentsRef = ref(database, `posts/${route.params?.postId}/comments`);
-      onValue(commentsRef, (snapshot) => {
-        const data = snapshot.val() || [];
-        setComments(Object.values(data));
-      });
-    };
+    fetchPostDetails();
 
-    // Fetch user data from Firestore
+    const commentsRef = ref(database, `posts/${postId}/comments`);
+    onValue(commentsRef, (snapshot) => {
+      const data = snapshot.val() || [];
+      setComments(Object.values(data));
+    });
+
     const fetchUserData = async () => {
       const currentUser = auth.currentUser;
       if (currentUser) {
@@ -56,156 +54,167 @@ const PostDetail = ({ route, navigation }) => {
       }
     };
 
-    fetchPostDetails();
-    fetchComments();
     fetchUserData();
   }, [route.params]);
 
-  // Submit a comment
   const submitComment = async () => {
-    if (!commentText.trim()) return;
+  if (!commentText.trim()) return;
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    console.error('User not logged in');
+    return;
+  }
 
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      console.error('User not logged in');
-      return;
+  // Generate a unique key for the new comment using push()
+  const commentRef = ref(database, `posts/${post.id}/comments`).push();
+
+  await set(commentRef, {
+    text: commentText,
+    userId: currentUser.email, // Include the email of the user
+    displayName: userData.displayName || 'Anonymous',
+    profileImage: userData.photoURL || 'https://via.placeholder.com/30',
+    createdAt: Date.now(),
+    userEmail: currentUser.email // Storing the user's email for filtering purposes
+  });
+
+  setCommentText(''); // Reset the comment input field after submission
+};
+
+const handleVote = async (postId, voteType) => {
+  setIsLoading(true); // Start loading indicator
+  const currentUser = auth.currentUser;
+
+  if (!currentUser || !currentUser.email) {
+    console.error('User email is not available.');
+    setIsLoading(false); // Stop loading
+    return;
+  }
+
+  const userEmail = currentUser.email.toLowerCase().trim();
+  const sanitizedEmail = userEmail.replace(/[.#$\/\[\]]/g, '_'); // Remove invalid characters
+
+  try {
+    // Get user data
+    const userDocRef = doc(firestore, `users/${userEmail}`);
+    const userDoc = await getDoc(userDocRef);
+    if (!userDoc.exists()) {
+      throw new Error('User does not exist in Firestore');
+    }
+    const userData = userDoc.data();
+    const displayName = userData.displayName || 'Anonymous';
+    const photoURL = userData.photoURL || 'https://via.placeholder.com/150';
+
+    // Get the post data from Firebase Realtime Database
+    const postRef = ref(database, `posts/${postId}`);
+    const postSnapshot = await get(postRef);
+    const postData = postSnapshot.val();
+    if (!postData) {
+      throw new Error('Post does not exist');
     }
 
-    const commentRef = push(ref(database, `posts/${post.id}/comments`));
-    await set(commentRef, {
-      text: commentText,
-      userId: currentUser?.email,
-      displayName: userData.displayName || 'Anonymous',
-      profileImage: userData.photoURL || 'https://via.placeholder.com/30',
-      createdAt: Date.now(),
+    // Destructure the current upvotes, downvotes, and voters
+    let { upvotes = 0, downvotes = 0, voters = {} } = postData;
+
+    // Convert voteType to match 'upvote' and 'downvote' convention
+    const newVoteType = voteType === 'upvotes' ? 'upvote' : 'downvote';
+
+    // Handle vote logic
+    if (voters[sanitizedEmail] && voters[sanitizedEmail].voteType === newVoteType) {
+      // Remove vote if the user clicks the same vote type again
+      newVoteType === 'upvote' ? upvotes-- : downvotes--;
+      delete voters[sanitizedEmail]; // Remove the voter from the list
+    } else {
+      // Add or change the vote
+      if (voters[sanitizedEmail]) {
+        // If the user is switching vote type, decrement the previous vote type
+        voters[sanitizedEmail].voteType === 'upvote' ? upvotes-- : downvotes--;
+      }
+      // Increment the new vote type
+      newVoteType === 'upvote' ? upvotes++ : downvotes++;
+
+      // Update the voter's entry
+      voters[sanitizedEmail] = {
+        voteType: newVoteType,
+        displayName,
+        email: userEmail,
+        photoURL,
+        timestamp: Date.now() // Use integer timestamp (in milliseconds)
+      };
+    }
+
+    // Update the post with new vote counts and voters
+    await update(postRef, {
+      upvotes,
+      downvotes,
+      voters
     });
 
-    setCommentText(''); // Reset the input
-  };
-
-  // Handle upvote
-  const handleUpvote = async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return;
-
-    const userUpvoteRef = ref(database, `posts/${post.id}/upvotes/${currentUser.uid}`);
-    const upvoteSnapshot = await get(userUpvoteRef);
-
-    if (!upvoteSnapshot.exists()) {
-      const postRef = ref(database, `posts/${post.id}`);
-      await update(postRef, { upvotes: (post.upvotes || 0) + 1 });
-
-      // Track that the user has upvoted
-      await set(userUpvoteRef, true);
-    }
-  };
-
-  // Handle downvote
-  const handleDownvote = async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return;
-
-    const userDownvoteRef = ref(database, `posts/${post.id}/downvotes/${currentUser.uid}`);
-    const downvoteSnapshot = await get(userDownvoteRef);
-
-    if (!downvoteSnapshot.exists()) {
-      const postRef = ref(database, `posts/${post.id}`);
-      await update(postRef, { downvotes: (post.downvotes || 0) + 1 });
-
-      // Track that the user has downvoted
-      await set(userDownvoteRef, true);
-    }
-  };
-
-  const formatDate = (timestamp) => {
-    return format(new Date(timestamp), 'PPpp');
-  };
-
-  if (!post || !post.id) {
-    return (
-      <View style={styles.container}>
-        <Text>Loading post details...</Text>
-      </View>
-    );
+    // Update the local state (if needed)
+    setPost(prev => ({
+      ...prev,
+      upvotes,
+      downvotes,
+      voters
+    }));
+  } catch (error) {
+    console.error('Error handling vote:', error);
+  } finally {
+    setIsLoading(false); // End loading
   }
+};
+
+
+
 
   return (
     <ScrollView style={styles.container}>
-      {/* Back Button */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={30} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerText}>Post Details</Text>
       </View>
-
       <View style={styles.feedItem}>
         <View style={styles.feedHeader}>
-          <Image
-            source={{ uri: post.photoURL || 'https://via.placeholder.com/50' }}
-            style={styles.profileIcon}
-          />
+          <Image source={{ uri: post.photoURL || 'https://via.placeholder.com/50' }} style={styles.profileIcon} />
           <View style={styles.feedHeaderText}>
             <Text style={[styles.feedAuthor, { color: colors.text }]}>
-              {typeof post.displayName === 'string' ? post.displayName : 'Unknown User'}
+              {post.displayName || 'Unknown User'}
             </Text>
-            {post.location ? (
+            {post.location && (
               <Text style={[styles.feedLocation, { color: colors.text }]}>
-                Location: {post.location.latitude}, {post.location.longitude}
-              </Text>
-            ) : (
-              <Text style={[styles.feedLocation, { color: colors.text }]}>
-                Location: Not available
+                Location: {`${post.location.latitude}, ${post.location.longitude}`}
               </Text>
             )}
           </View>
         </View>
-
         <View style={styles.feedContent}>
-          {post.imageURL ? (
-            <Image source={{ uri: post.imageURL }} style={styles.feedImage} />
-          ) : null}
-          <Text style={[styles.feedTitle, { color: colors.text }]}>
-            {typeof post.title === 'string' ? post.title : 'No title'}
-          </Text>
-          <Text style={[styles.feedBody, { color: colors.text }]}>
-            {typeof post.body === 'string' ? post.body : 'No content available.'}
-          </Text>
-          <Text style={styles.postDate}>
-            {formatDate(post.createdAt || Date.now())}
-          </Text>
+          {post.imageURL && <Image source={{ uri: post.imageURL }} style={styles.feedImage} />}
+          <Text style={[styles.feedTitle, { color: colors.text }]}>{post.title || 'No title'}</Text>
+          <Text style={[styles.feedBody, { color: colors.text }]}>{post.body || 'No content available.'}</Text>
+          <Text style={styles.postDate}>{format(new Date(post.createdAt || Date.now()), 'PPpp')}</Text>
         </View>
       </View>
-
       <View style={styles.voteSection}>
-        <TouchableOpacity onPress={handleUpvote} style={styles.voteButton}>
+        <TouchableOpacity onPress={() => handleVote(post.id, 'upvotes')} style={styles.voteButton}>
           <MaterialIcons name="thumb-up" size={24} color="blue" />
-          <Text style={styles.voteCount}>{post.upvotes || 0}</Text>
+          <Text style={styles.voteCount}>{(post.upvotes || 0).toString()}</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleDownvote} style={styles.voteButton}>
+        <TouchableOpacity onPress={() => handleVote(post.id, 'downvotes')} style={styles.voteButton}>
           <MaterialIcons name="thumb-down" size={24} color="red" />
-          <Text style={styles.voteCount}>{post.downvotes || 0}</Text>
+          <Text style={styles.voteCount}>{(post.downvotes || 0).toString()}</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Render comments */}
       {comments.map((comment, index) => (
         <View key={index} style={styles.commentItem}>
-          <Image
-            source={{ uri: comment.profileImage || 'https://via.placeholder.com/30' }}
-            style={styles.commentProfileIcon}
-          />
+          <Image source={{ uri: comment.profileImage || 'https://via.placeholder.com/30' }} style={styles.commentProfileIcon} />
           <View style={styles.commentTextContainer}>
-            <Text style={styles.commentUserName}>
-              {typeof comment.displayName === 'string' ? comment.displayName : 'Anonymous'}
-            </Text>
+            <Text style={styles.commentUserName}>{comment.displayName || 'Anonymous'}</Text>
             <Text style={styles.commentText}>{comment.text}</Text>
-            <Text style={styles.commentDate}>{formatDate(comment.createdAt)}</Text>
+            <Text style={styles.commentDate}>{format(new Date(comment.createdAt), 'PPpp')}</Text>
           </View>
         </View>
       ))}
-
-      {/* Comment input */}
       <View style={styles.commentInputContainer}>
         <TextInput
           style={styles.commentInput}

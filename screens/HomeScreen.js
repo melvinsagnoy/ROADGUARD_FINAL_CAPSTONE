@@ -326,19 +326,29 @@ const addNewPost = async (newPost) => {
 };
 
 const handleVote = async (postId, voteType) => {
-  setIsLoading(true); // Start loading
-  const postRef = ref(database, `posts/${postId}`);
-  const userEmail = user?.email?.toLowerCase().trim();
+  setIsLoading(true); // Start loading indicator
+  const currentUser = auth.currentUser;
 
-  if (!userEmail) {
+  if (!currentUser || !currentUser.email) {
     console.error('User email is not available.');
     setIsLoading(false); // End loading
     return;
   }
 
-  const sanitizedEmail = sanitizeKey(userEmail); // Remove invalid characters
+  const userEmail = currentUser.email.toLowerCase().trim();
+  const sanitizedEmail = sanitizeKey(userEmail); // Use the sanitized email
 
   try {
+    const userDocRef = doc(firestore, `users/${userEmail}`);
+    const userDoc = await getDoc(userDocRef);
+    if (!userDoc.exists()) {
+      throw new Error('User does not exist in Firestore');
+    }
+    const userData = userDoc.data();
+    const displayName = userData.displayName || 'Anonymous';
+    const photoURL = userData.photoURL || 'https://via.placeholder.com/150';
+
+    const postRef = ref(database, `posts/${postId}`);
     const postSnapshot = await get(postRef);
     const postData = postSnapshot.val();
 
@@ -346,84 +356,55 @@ const handleVote = async (postId, voteType) => {
       throw new Error('Post does not exist');
     }
 
-    // Fetch current votes
-    const { upvotes = 0, downvotes = 0, voters = {} } = postData;
+    let { upvotes = 0, downvotes = 0, voters = {} } = postData;
 
-    // Determine the user's previous vote
+    // Determine the vote type ('upvote' or 'downvote') for consistency
+    const newVoteType = voteType === 'upvotes' ? 'upvote' : 'downvote';
+
+    // Handle voting logic
     const previousVote = voters[sanitizedEmail];
-
-    let updatedUpvotes = upvotes;
-    let updatedDownvotes = downvotes;
-    const updatedVoters = { ...voters };
-
-    if (previousVote) {
-      if (previousVote === voteType) {
-        // Remove the vote
-        if (voteType === 'upvotes') {
-          updatedUpvotes -= 1;
-        } else {
-          updatedDownvotes -= 1;
-        }
-        // Remove the user's vote from the voters field
-        delete updatedVoters[sanitizedEmail];
-      } else {
-        // Change vote
-        if (previousVote === 'upvotes') {
-          updatedUpvotes -= 1;
-        } else {
-          updatedDownvotes -= 1;
-        }
-        if (voteType === 'upvotes') {
-          updatedUpvotes += 1;
-        } else {
-          updatedDownvotes += 1;
-        }
-        // Update the user's vote in the voters field
-        updatedVoters[sanitizedEmail] = voteType;
-      }
+    if (previousVote && previousVote.voteType === newVoteType) {
+      // Remove the vote
+      newVoteType === 'upvote' ? upvotes-- : downvotes--;
+      delete voters[sanitizedEmail];
     } else {
-      // New vote
-      if (voteType === 'upvotes') {
-        updatedUpvotes += 1;
-      } else {
-        updatedDownvotes += 1;
+      // Change or add new vote
+      if (previousVote) {
+        // If changing the vote type, decrement the previous vote
+        previousVote.voteType === 'upvote' ? upvotes-- : downvotes--;
       }
-      // Add the user's vote to the voters field
-      updatedVoters[sanitizedEmail] = voteType;
+      // Increment the new vote type
+      newVoteType === 'upvote' ? upvotes++ : downvotes++;
+      voters[sanitizedEmail] = {
+        voteType: newVoteType, // Ensure the vote type is consistent ('upvote' or 'downvote')
+        displayName,
+        email: userEmail,
+        photoURL,
+        timestamp: Date.now() // Save the timestamp as an integer in milliseconds
+      };
     }
 
-    // Check if downvotes have reached 5
-    if (updatedDownvotes >= 5) {
-      // Delete the post
-      await remove(postRef);
-      console.log('Post has been deleted due to 5 downvotes.');
+    // Update post in the database
+    await update(postRef, {
+      upvotes,
+      downvotes,
+      voters
+    });
 
-      // Update local state by removing the deleted post
-      setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postId));
-    } else {
-      // Update the post in Realtime Database
-      await update(postRef, {
-        upvotes: updatedUpvotes,
-        downvotes: updatedDownvotes,
-        voters: updatedVoters,
-      });
-
-      // Update local state
-      setPosts((prevPosts) =>
-        prevPosts.map((post) =>
-          post.id === postId
-            ? { ...post, upvotes: updatedUpvotes, downvotes: updatedDownvotes, voters: updatedVoters }
-            : post
-        )
-      );
-    }
+    // Optionally, refresh the local state to reflect the new votes
+    setPosts((prevPosts) =>
+      prevPosts.map((post) =>
+        post.id === postId
+          ? { ...post, upvotes, downvotes, voters }
+          : post
+      )
+    );
   } catch (error) {
     console.error('Error handling vote:', error);
   } finally {
-    setIsLoading(false); // End loading
+    setIsLoading(false);
   }
 };
-
 
 
 

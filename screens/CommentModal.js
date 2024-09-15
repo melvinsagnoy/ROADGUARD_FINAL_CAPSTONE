@@ -74,92 +74,93 @@ const CommentModal = ({ visible, onClose, postId }) => {
         return;
       }
 
-      const userEmail = currentUser.email;
-      const userDocRef = doc(firestore, `users/${userEmail}`);
+      // Fetch user details from Firestore to ensure you have the latest displayName and photoURL
+      const userDocRef = doc(firestore, `users/${currentUser.email}`);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-        console.error('User profile does not exist:', userEmail);
+        console.error('User profile does not exist');
         setCommentLoading(false); // Stop loading
         return;
       }
 
       const userData = userDoc.data();
+
       const newCommentRef = ref(database, `posts/${postId}/comments/${Date.now()}`);
 
       await set(newCommentRef, {
         text: comment,
         createdAt: Date.now(),
-        displayName: userData.displayName || 'Anonymous',
-        profileImage: userData.photoURL || 'https://via.placeholder.com/30', // Ensure this is set
-        replies: {}, // Initialize replies field
+        displayName: userData.displayName || 'Anonymous', // Use displayName from Firestore
+        profileImage: userData.photoURL || 'https://via.placeholder.com/30', // Use photoURL from Firestore
+        email: currentUser.email // Including email in the comment data
       });
 
-      setComment(''); // Reset comment field
-      setSuccessMessage('Comment added successfully!');
-      onClose();
+      setComment(''); // Clear the comment input field
+      onClose(); // Close the modal or clear up state
 
       setTimeout(() => {
         setSuccessMessage('');
       }, 3000);
     } catch (error) {
-      console.error('Error adding comment:', error.message || error);
+      console.error('Error adding comment:', error);
     } finally {
-      setCommentLoading(false); // Stop loading
+      setCommentLoading(false); // End loading
     }
   }
 };
 
-  const handleReplySubmit = async (parentId) => {
-    if (comment.trim()) {
-      setReplyLoading(prev => ({ ...prev, [parentId]: true })); // Start loading for this reply
+ const handleReplySubmit = async (parentId) => {
+  if (comment.trim()) {
+    setReplyLoading(prev => ({ ...prev, [parentId]: true })); // Start loading for this particular reply
 
-      try {
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-          console.error('No user is currently logged in.');
-          setReplyLoading(prev => ({ ...prev, [parentId]: false })); // Stop loading
-          return;
-        }
-
-        const userEmail = currentUser.email;
-        const userDocRef = doc(firestore, `users/${userEmail}`);
-        const userDoc = await getDoc(userDocRef);
-
-        if (!userDoc.exists()) {
-          console.error('User profile does not exist:', userEmail);
-          setReplyLoading(prev => ({ ...prev, [parentId]: false })); // Stop loading
-          return;
-        }
-
-        const userData = userDoc.data();
-        const replyId = Date.now().toString(); // Use a Unix timestamp as reply ID
-
-        const replyRef = ref(database, `posts/${postId}/comments/${parentId}/replies/${replyId}`);
-
-        await set(replyRef, {
-          text: comment,
-          createdAt: Date.now(),
-          displayName: userData.displayName || 'Anonymous',
-          profileImage: userData.photoURL || '',
-        });
-
-        setComment('');
-        setReplyingTo(null); // Reset replying state
-        setShowReplyInput(null); // Hide reply input
-        setSuccessMessage('Reply added successfully!');
-        onClose();
-
-        setTimeout(() => {
-          setSuccessMessage('');
-        }, 3000);
-      } catch (error) {
-        console.error('Error adding reply:', error.message || error);
-      } finally {
+    try {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.error('No user is currently logged in.');
         setReplyLoading(prev => ({ ...prev, [parentId]: false })); // Stop loading
+        return;
       }
+
+      // Fetch user details from Firestore to ensure you have the latest displayName and photoURL
+      const userDocRef = doc(firestore, `users/${currentUser.email}`);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        console.error('User profile does not exist');
+        setReplyLoading(prev => ({ ...prev, [parentId]: false })); // Stop loading
+        return;
+      }
+
+      const userData = userDoc.data();
+
+      const replyId = Date.now().toString(); // Use a Unix timestamp as reply ID
+      const replyRef = ref(database, `posts/${postId}/comments/${parentId}/replies/${replyId}`);
+
+      await set(replyRef, {
+        text: comment,
+        createdAt: Date.now(),
+        displayName: userData.displayName || 'Anonymous', // Use displayName from Firestore
+        profileImage: userData.photoURL || 'https://via.placeholder.com/30', // Use photoURL from Firestore
+        email: currentUser.email // Including email in the reply data
+      });
+
+      setComment(''); // Clear the reply input field
+      setReplyingTo(null); // Reset the replying state
+      setShowReplyInput(null); // Hide the reply input
+      setSuccessMessage('Reply added successfully!');
+      onClose(); // Close the modal or clear up state
+
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+    } catch (error) {
+      console.error('Error adding reply:', error);
+    } finally {
+      setReplyLoading(prev => ({ ...prev, [parentId]: false })); // End loading
     }
-  };
+  }
+};
 
   const formatDate = (timestamp) => {
     return new Date(timestamp).toLocaleString(); // Adjust format as needed
