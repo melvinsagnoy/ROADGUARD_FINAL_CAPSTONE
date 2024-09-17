@@ -26,7 +26,9 @@ const App = () => {
       handleNotificationClick(response.notification.request.content.data);
     });
 
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   async function requestNotificationPermissions() {
@@ -34,13 +36,22 @@ const App = () => {
     console.log('Notification permissions status:', status);
   }
 
-  const handleNotificationClick = (data) => {
-    // Assuming navigation without refs, you may need a context or other global state management
-  };
+  async function registerBackgroundFetchAsync() {
+    const TASK_NAME = 'background-weather-task';
+    console.log('Registering task:', TASK_NAME);
+    try {
+      await BackgroundFetch.registerTaskAsync(TASK_NAME, {
+        minimumInterval: 1800,  // in seconds (30 minutes)
+        stopOnTerminate: false,
+        startOnBoot: true,
+      });
+      console.log('Task registered successfully');
+    } catch (error) {
+      console.error('Error registering task:', error);
+    }
+  }
 
-  const WEATHER_TASK = 'background-weather-task';
-
-  TaskManager.defineTask(WEATHER_TASK, async () => {
+  TaskManager.defineTask('background-weather-task', async () => {
     try {
       const weather = await fetchWeather();
       await scheduleWeatherNotification(weather);
@@ -51,16 +62,8 @@ const App = () => {
     }
   });
 
-  async function registerBackgroundFetchAsync() {
-    BackgroundFetch.registerTaskAsync(WEATHER_TASK, {
-      minimumInterval: 1800,
-      stopOnTerminate: false,
-      startOnBoot: true,
-    });
-  }
-
   async function fetchWeather() {
-    const url = `https://api.openweathermap.org/data/2.5/weather?lat=10.3157&lon=123.8854&units=metric&appid=b2529bcc950c7e261538c1ddb942c44e`;
+    const url = `https://api.openweathermap.org/data/2.5/weather?lat=10.3157&lon=123.8854&units=metric&appid=YOUR_API_KEY`;
     try {
       const response = await axios.get(url);
       return {
@@ -78,8 +81,6 @@ const App = () => {
         content: {
           title: "Weather Update",
           body: `The temperature is ${weather.temperature} with ${weather.condition}.`,
-          sound: true,
-          data: { screen: 'WeatherScreen', params: weather }
         },
         trigger: null,
       });
