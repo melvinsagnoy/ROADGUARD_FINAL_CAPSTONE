@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, firestore } from '../firebaseConfig';
 import Icon from 'react-native-vector-icons/Ionicons';
 import CombinedModal from './CombinedModal'; // Import the CombinedModal component
-import PhoneNumberModal from './PhoneNumberModal';
+import PhoneNumberModal from './PhoneNumberModal'; // Import PhoneNumberModal
 import { doc, setDoc } from 'firebase/firestore';
 
 const RegisterScreen = ({ navigation }) => {
@@ -16,7 +16,7 @@ const RegisterScreen = ({ navigation }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showCombinedModal, setShowCombinedModal] = useState(false); // Modal visibility state
-  const [showPhoneNumberModal, setShowPhoneNumberModal] = useState(false);
+  const [showPhoneNumberModal, setShowPhoneNumberModal] = useState(false); // Phone number modal visibility
   const [userEmail, setUserEmail] = useState(null);
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
@@ -60,7 +60,7 @@ const RegisterScreen = ({ navigation }) => {
 
       setLoading(false);
       rotateAnim.stopAnimation();
-      setShowPhoneNumberModal(true);
+      setShowPhoneNumberModal(true); // Show phone number modal after registration
     } catch (error) {
       setLoading(false);
       rotateAnim.stopAnimation();
@@ -79,7 +79,7 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   const handlePhoneNumberModalClose = async (phoneNumber) => {
-    setShowPhoneNumberModal(false);
+    setShowPhoneNumberModal(false); // Close phone number modal after input
     if (phoneNumber) {
       try {
         const docRef = doc(firestore, 'users', userEmail);
@@ -91,7 +91,7 @@ const RegisterScreen = ({ navigation }) => {
         Alert.alert('Update Error', error.message);
       }
     }
-    navigation.navigate('Passcode');
+    navigation.navigate('Passcode'); // Navigate to Passcode screen after saving phone number
   };
 
   const rotateInterpolate = rotateAnim.interpolate({
@@ -204,6 +204,13 @@ const RegisterScreen = ({ navigation }) => {
         onClose={handleCombinedModalClose}
       />
 
+      {/* PhoneNumberModal for entering phone number */}
+      {showPhoneNumberModal && (
+        <PhoneNumberModal 
+          visible={showPhoneNumberModal}
+          onClose={handlePhoneNumberModalClose}
+        />
+      )}
     </ScrollView>
   );
 };
