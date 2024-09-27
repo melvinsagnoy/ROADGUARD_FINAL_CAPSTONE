@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useColorScheme } from 'react-native'; // Import useColorScheme
+import FloatingButton from '../screens/FloatingButton'; // Import FloatingButton
+import ChatbotModal from '../screens/ChatbotModal'; // Import ChatbotModal
 
 // Import screens
 import LoginScreen from '../screens/LoginScreen';
@@ -29,38 +30,68 @@ import PrivacySecurityScreen from '../screens/PrivacySecurityScreen';
 
 const Stack = createStackNavigator();
 
-
-
 const AuthNavigator = () => {
-  const [initialRoute, setInitialRoute] = useState(null); // Initial state is null (loading state)
+  const [initialRoute, setInitialRoute] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showFloatingButton, setShowFloatingButton] = useState(false); // State to control button visibility
+  const [isChatbotVisible, setIsChatbotVisible] = useState(false); // State to control chatbot modal visibility
+
+  const navigationRef = useNavigationContainerRef();
 
   useEffect(() => {
     const checkUserLoggedIn = async () => {
       try {
         const userData = await AsyncStorage.getItem('user');
         if (userData) {
-          setInitialRoute('VerificationOptions'); // If user exists, redirect to VerificationOptions
+          setInitialRoute('VerificationOptions');
         } else {
-          setInitialRoute('Landing'); // Otherwise, go to LandingScreen
+          setInitialRoute('Landing');
         }
       } catch (error) {
         console.error('Error checking user login status:', error);
-        setInitialRoute('Landing'); // In case of error, fallback to Landing
+        setInitialRoute('Landing');
       } finally {
-        setIsLoading(false); // Once the check is complete, stop loading
+        setIsLoading(false);
       }
     };
 
     checkUserLoggedIn();
   }, []);
 
+  useEffect(() => {
+    // Listen to navigation state changes to update the floating button visibility
+    const unsubscribe = navigationRef?.addListener('state', () => {
+      const currentRoute = navigationRef?.getCurrentRoute()?.name;
+
+      // List of screens where the button should not be shown
+      const screensWithoutFloatingButton = [
+        'Landing',
+        'Login',
+        'Register',
+        'ProfileUpdate',
+        'Fingerprint',
+        'Passcode',
+        'VerificationOptions',
+        'PasscodeVerificationScreen'
+      ];
+
+      if (screensWithoutFloatingButton.includes(currentRoute)) {
+        setShowFloatingButton(false);
+      } else {
+        setShowFloatingButton(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigationRef]);
+
   if (isLoading) {
     return null; // Optionally, return a loading indicator here
   }
 
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator initialRouteName={initialRoute}>
         <Stack.Screen
           name="Landing"
@@ -168,6 +199,24 @@ const AuthNavigator = () => {
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
+      {/* Conditionally render the FloatingButton based on currentRoute */}
+      {showFloatingButton && (
+        <FloatingButton 
+        onPress={() => {
+          console.log('Floating Button Clicked'); // Debugging log
+          setIsChatbotVisible(true); // Show the chatbot modal when button is clicked
+        }} 
+      />
+    )}
+
+      {/* Chatbot Modal for AI Interaction */}
+      <ChatbotModal
+        visible={isChatbotVisible}
+        onClose={() => {
+          console.log('Chatbot Modal closing...'); // Debugging log
+          setIsChatbotVisible(false);
+        }}
+      />
     </NavigationContainer>
   );
 };

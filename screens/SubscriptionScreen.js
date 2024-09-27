@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { ref, set } from 'firebase/database'; // Import Firebase Realtime Database functions
+import { getDownloadURL, uploadBytes, ref as storageRef } from 'firebase/storage'; // Import Firebase Storage functions
+import { database, storage, auth } from '../firebaseConfig'; // Import the configured database, storage, and auth from your firebaseConfig.js
 
 const SubscriptionScreen = ({ navigation }) => {
   const [selectedOption, setSelectedOption] = useState('1 month');
@@ -15,6 +18,15 @@ const SubscriptionScreen = ({ navigation }) => {
   const [inputDetail, setInputDetail] = useState('');
   const [proofImage, setProofImage] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+
+  // Get the current user's email on component mount
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      setUserEmail(user.email);
+    }
+  }, []);
 
   const handleSubscription = (option) => {
     setSelectedOption(option);
@@ -37,29 +49,25 @@ const SubscriptionScreen = ({ navigation }) => {
       setDetailsModalVisible(false);
       setQrCodeModalVisible(true); // Show the QR code modal
     } else {
-      console.log(`Payment Method: ${selectedPaymentMethod}`);
-      console.log(`Name: ${inputName}`);
-      console.log(`${selectedPaymentMethod === 'GCash' ? 'Mobile Number' : 'Email'}: ${inputDetail}`);
-      setDetailsModalVisible(false);
       Alert.alert('Payment processed successfully');
+      setDetailsModalVisible(false);
     }
   };
 
   const getQrCodeImage = () => {
     switch (selectedOption) {
       case '1 month':
-        return require('../assets/gcash_99.99.png'); // Replace with your actual image path
+        return require('../assets/gcash_99.99.png');
       case '6 months':
-        return require('../assets/gcash_499.99.png'); // Replace with your actual image path
+        return require('../assets/gcash_499.99.png');
       case '12 months':
-        return require('../assets/gcash_999.99.png'); // Replace with your actual image path
+        return require('../assets/gcash_999.99.png');
       default:
         return null;
     }
   };
 
   const pickImage = async () => {
-    // Ask for permission to access media library
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permissionResult.granted === false) {
@@ -79,7 +87,6 @@ const SubscriptionScreen = ({ navigation }) => {
   };
 
   const takePhoto = async () => {
-    // Ask for permission to access camera
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
     if (permissionResult.granted === false) {
@@ -106,29 +113,58 @@ const SubscriptionScreen = ({ navigation }) => {
 
     try {
       setIsUploading(true);
-      // Here, implement the logic to upload the image to your backend or storage service.
-      // For demonstration, we'll just simulate a network request with a timeout.
 
-      setTimeout(() => {
-        setIsUploading(false);
-        setUploadProofModalVisible(false);
-        setQrCodeModalVisible(false);
-        Alert.alert("Proof of payment uploaded successfully!");
-        // Reset the state
-        setProofImage(null);
-        setInputName('');
-        setInputDetail('');
-        setSelectedPaymentMethod('');
-        setSelectedOption('1 month');
-      }, 2000);
+      // Upload image to Firebase Storage
+      const response = await fetch(proofImage);
+      const blob = await response.blob();
+      const imageRef = storageRef(storage, `subscription_proof/${Date.now()}_${inputName}.jpg`);
+      await uploadBytes(imageRef, blob);
+
+      // Get the image download URL
+      const downloadURL = await getDownloadURL(imageRef);
+
+      // Get the current timestamp
+      const timestamp = new Date().toISOString();
+
+      // Create a unique ID for the subscription entry
+      const subscriptionId = `sub_${Date.now()}`;
+
+      // Define the data to be stored
+      const subscriptionData = {
+        name: inputName,
+        mobileNumber: inputDetail,
+        proofImage: downloadURL, // Store the download URL of the image
+        timestamp,
+        status: 'Awaiting Approval', // Initial status
+        subscriptionPlan: selectedOption,
+        paymentMethod: selectedPaymentMethod,
+        userEmail: userEmail, // Store the current user's email
+      };
+
+      // Store the subscription data in Firebase Realtime Database
+      await set(ref(database, `subscriptions/${subscriptionId}`), subscriptionData);
+
+      setIsUploading(false);
+      setUploadProofModalVisible(false);
+      setQrCodeModalVisible(false);
+      Alert.alert("Proof of payment uploaded and stored successfully!");
+
+      // Reset the state
+      setProofImage(null);
+      setInputName('');
+      setInputDetail('');
+      setSelectedPaymentMethod('');
+      setSelectedOption('1 month');
     } catch (error) {
       setIsUploading(false);
       Alert.alert("There was an error uploading your proof. Please try again.");
+      console.error(error);
     }
   };
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <FontAwesome name="arrow-left" size={24} color="black" />
@@ -137,6 +173,7 @@ const SubscriptionScreen = ({ navigation }) => {
         <FontAwesome name="cog" size={24} color="black" />
       </View>
 
+      {/* Subscription Image */}
       <Image 
         source={require('../assets/sub_pic.png')}  // Update this line with the correct path
         style={styles.image}
@@ -145,6 +182,7 @@ const SubscriptionScreen = ({ navigation }) => {
       <Text style={styles.title}>Upgrade to Premium</Text>
       <Text style={styles.subtitle}>Use Roadguard ad-free</Text>
 
+      {/* Subscription Options */}
       <View style={styles.optionsContainer}>
         <TouchableOpacity 
           style={[styles.option, selectedOption === '1 month' && styles.selectedOption]} 
