@@ -29,6 +29,7 @@ import { format } from 'date-fns';
 import { BackHandler } from 'react-native';
 import axios from 'axios';
 import WeatherHeader from './WeatherHeader'; // Import the WeatherHeader component
+import { useFocusEffect } from '@react-navigation/native';
 
 const GOOGLE_API_KEY = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw';
 
@@ -43,18 +44,18 @@ const HomeScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
   const [isSettingsModalVisible, setSettingsModalVisible] = useState(false);
   const [posts, setPosts] = useState([]);
   const [userVotes, setUserVotes] = useState({}); // Track user votes
+  const [activeNav, setActiveNav] = useState('Home');
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState({});
+  const [fontsLoaded] = useFonts({
+    Poppins: require('../assets/fonts/Poppins-Regular.ttf'),
+  });
   const [iconScales, setIconScales] = useState({
     home: new Animated.Value(1),
     search: new Animated.Value(1),
     add: new Animated.Value(1),
     bell: new Animated.Value(1),
     user: new Animated.Value(1),
-  });
-  const [activeNav, setActiveNav] = useState('home');
-  const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState({});
-  const [fontsLoaded] = useFonts({
-    Poppins: require('../assets/fonts/Poppins-Regular.ttf'),
   });
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
@@ -69,6 +70,11 @@ const [filter, setFilter] = useState('newest'); // Default to 'newest'
   
   
   
+  useFocusEffect(
+    React.useCallback(() => {
+      setActiveNav('Home'); // Set active tab to 'Home' when this screen is focused
+    }, [])
+  );
 
   useEffect(() => {
     // Fetch posts and comments on component mount
@@ -105,6 +111,8 @@ const [filter, setFilter] = useState('newest'); // Default to 'newest'
     fetchAllPosts();
     fetchComments();
 
+
+    
     // Setup auth state listener
     const unsubscribe = auth.onAuthStateChanged((authUser) => {
       setUser(authUser);
@@ -164,6 +172,12 @@ const formatDate = (timestamp) => {
     console.error('Error formatting date:', error);
     return 'Invalid date';
   }
+};
+
+
+const handleNavBarPress = (screen) => {
+  setActiveNav(screen);
+  navigation.navigate(screen);
 };
 
 const fetchAddress = async (latitude, longitude) => {
@@ -706,13 +720,7 @@ const handleDeletePost = async (postId) => {
         {renderNewsFeed()}
       </ScrollView>
 
-      <NavBar
-        navigation={navigation}
-        animateIcon={animateIcon}
-        activeNav={activeNav}
-        setActiveScreen={setActiveScreen}
-        iconScales={iconScales}
-      />
+     
     </View>
   );
 };

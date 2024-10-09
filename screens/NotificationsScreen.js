@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, RefreshControl, Platform } from 'react-native';
 import { ref, onValue, off, update, get } from 'firebase/database';
+import { useFocusEffect } from '@react-navigation/native';
 import { database, auth } from '../firebaseConfig';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { formatDistanceToNow } from 'date-fns';
 import * as Notifications from 'expo-notifications';
 import NavBar from './NavBar'; // Ensure the import path is correct
 
-const NotificationsScreen = ({ navigation }) => {
+const NotificationsScreen = ({ navigation, activeNav, setActiveNav  }) => {
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [clickedNotifications, setClickedNotifications] = useState({}); // Track clicked notifications
+
+  useFocusEffect(
+    React.useCallback(() => {
+      setActiveNav('Notifications'); // Set active tab to 'Notifications' when this screen is focused
+    }, [])
+  );
+
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -275,7 +283,7 @@ const NotificationsScreen = ({ navigation }) => {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     />
-    <NavBar navigation={navigation} />
+     
   </View>
 );
 };

@@ -9,10 +9,11 @@ import NavBar from './NavBar';
 import { ref as dbRef, get, onValue } from 'firebase/database';  // For Realtime Database
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';  // For Storage
 import ClaimingFormModal from './ClaimingFormModal'; 
+import { useFocusEffect } from '@react-navigation/native';
 
 
 
-const ProfileScreen = ({ navigation }) => {
+const ProfileScreen = ({ navigation, activeNav, setActiveNav  }) => {
  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -33,8 +34,14 @@ const ProfileScreen = ({ navigation }) => {
   const [selectedReward, setSelectedReward] = useState(null); // State to store the selected reward
   const [redeemedRewards, setRedeemedRewards] = useState([]);
 const [redeemedRewardsModalVisible, setRedeemedRewardsModalVisible] = useState(false);
+
   
-  
+useFocusEffect(
+  React.useCallback(() => {
+    setActiveNav('Profile'); // Set active tab to 'Profile' when this screen is focused
+  }, [])
+);
+
 
   useEffect(() => {
   const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -618,12 +625,19 @@ if (newPhoneNumber.trim()) {
 />
 
 
-      <NavBar navigation={navigation} isProfileComplete={isProfileComplete} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  navbarContainer: {
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+    borderTopWidth: 1,
+    borderTopColor: '#DDD',
+    backgroundColor: '#FFF', // Background color for NavBar
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
