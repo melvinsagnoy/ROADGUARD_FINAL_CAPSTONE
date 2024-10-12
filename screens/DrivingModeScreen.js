@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Alert, Easing, Image, Linking} from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline, AnimatedRegion } from 'react-native-maps';
-import { getDatabase, ref, onValue } from 'firebase/database';
+import { getDatabase, ref, onValue, update, get } from 'firebase/database';
 import axios from 'axios';
 import * as Speech from 'expo-speech';
 import * as Location from 'expo-location';
@@ -16,7 +16,9 @@ import brokenGlassIcon from '../assets/broken_glass.png';
 import trafficAccidentsIcon from '../assets/traffic_accidents.png';
 import roadwayErosionIcon from '../assets/roadway_erosion.png';
 import looseGravelIcon from '../assets/loose_gravel.png';
+import { getAuth } from 'firebase/auth';
 import bridgeDamageIcon from '../assets/bridge_damage.png';
+
 
 
 
@@ -323,6 +325,38 @@ const mapStyle =[
   const bottomSheetRef = useRef(null);
   const [placeData, setPlaceData] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false); // Track if the BottomSheet is expanded
+  const [receiveCount, setReceiveCount] = useState(0);
+  
+
+  useEffect(() => {
+    const fetchReceiveCount = async () => {
+      const db = getDatabase();
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+  
+      if (!currentUser) {
+        console.error('No user is currently logged in');
+        return;
+      }
+  
+      const userEmail = currentUser.email.replace('.', '_'); // Replace '.' to avoid issues in Firebase keys
+      const hazardRef = ref(db, `hazard_receive/${userEmail}/receive`);
+  
+      // Use Firebase's onValue listener to listen for real-time updates
+      const unsubscribe = onValue(hazardRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setReceiveCount(snapshot.val());
+        } else {
+          setReceiveCount(0); // Default to 0 if no value exists
+        }
+      });
+  
+      // Cleanup the listener when the component is unmounted
+      return () => unsubscribe();
+    };
+  
+    fetchReceiveCount();
+  }, []);
   
 
   useEffect(() => {
@@ -467,7 +501,7 @@ const getHazardIcon = (hazardTitle) => {
 
 
   const fetchPlaceDetails = async (placeId) => {
-    const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Ensure this is correct and active
+    const apiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0'; // Ensure this is correct and active
     try {
       const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${apiKey}`;
       console.log(`Fetching place details from: ${url}`); // Log the request URL
@@ -487,7 +521,7 @@ const getHazardIcon = (hazardTitle) => {
   };
 
 const fetchPlaceIdFromCoords = async (latitude, longitude) => {
-  const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Ensure this is correct and active
+  const apiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0'; // Ensure this is correct and active
   try {
     const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=100&key=${apiKey}`;
     console.log(`Fetching nearby place from: ${url}`); // Log the request URL
@@ -517,7 +551,7 @@ useEffect(() => {
 
 
 const fetchPlaceDetailsByAddress = async (address) => {
-  const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Replace with your actual API key
+  const apiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0'; // Replace with your actual API key
   try {
     // Make a request to Google Geocoding API to get the placeId from the address
     const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
@@ -550,7 +584,7 @@ const fetchPlaceDetailsByAddress = async (address) => {
 const fetchUpdatedRouteData = async (newLocation) => {
   if (!newLocation || !destinationCoords) return;
 
-  const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Replace with your actual Google Maps API key
+  const apiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0'; // Replace with your actual Google Maps API key
   try {
     const response = await axios.get(
       `https://maps.googleapis.com/maps/api/directions/json?origin=${newLocation.latitude},${newLocation.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&mode=driving&key=${apiKey}`
@@ -636,9 +670,8 @@ const checkForHazards = (currentLocation) => {
 
 
 
-  // Trigger hazard alerts
 const alertHazard = (hazard, distanceInMeters) => {
-  setCurrentHazard(hazard); // Update the state with the current hazard
+  setCurrentHazard(hazard); 
   const message = `Pagbantay brats, kay naay ${hazard.title} sa unahan, ${distanceInMeters} metros nalang. Ayaw'g kompyansa brats!`;
 
   // Speak the hazard message
@@ -648,49 +681,24 @@ const alertHazard = (hazard, distanceInMeters) => {
     rate: 1,
   });
 
-  // Log the route coordinates and hazard location for debugging
-  console.log('Checking hazard:', hazard);
-  console.log('Route coordinates:', routeCoordinates);
+  // Increment the 'receive' field for the current user
+  incrementHazardCount();
 
-  // Check if the hazard is on the current route
   if (isHazardOnRoute(hazard, routeCoordinates)) {
-    console.log(`Hazard ${hazard.title} is on the route.`);
-    
-    // Alert with buttons for Proceed or Alternate Route
     Alert.alert(
       'WARNENG!',
       message,
       [
-        {
-          text: 'Proceed',
-          onPress: () => {
-            Speech.speak('Proceeding on the current route.', {
-              language: 'fil-PH',
-              pitch: 0.6,
-              rate: 1,
-            });
-          },
-        },
-        {
-          text: 'Alternate Route',
-          onPress: () => {
-            fetchAlternateRoute(currentLocation); // Attempt to find an alternate route
-          },
-        },
+        { text: 'Proceed', onPress: () => Speech.speak('Proceeding on the current route.', { language: 'fil-PH', pitch: 0.6, rate: 1 }) },
+        { text: 'Alternate Route', onPress: () => fetchAlternateRoute(currentLocation) },
       ],
       { cancelable: false }
     );
-  } else {
-    // Log the case where the hazard is not detected on the route
-    console.log(`Hazard ${hazard.title} is not on the route.`);
-    
-    // If hazard is not on the route, just proceed
-  
   }
 };
 
 const fetchAlternateRoute = async (currentLocation) => {
-  const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Replace with your actual Google Maps API key
+  const apiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0'; // Replace with your actual Google Maps API key
   try {
     const response = await axios.get(
       `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&mode=driving&alternatives=true&avoid=highways&key=${apiKey}`
@@ -745,7 +753,7 @@ const fetchAlternateRoute = async (currentLocation) => {
 
   const fetchRouteData = async () => {
   if (!location || !destinationCoords) return;
-  const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Replace with your actual Google Maps API key
+  const apiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0'; // Replace with your actual Google Maps API key
   try {
     const response = await axios.get(
       `https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&mode=driving&key=${apiKey}`
@@ -793,6 +801,33 @@ const fetchAlternateRoute = async (currentLocation) => {
     }
     return points;
   };
+
+  // Function to increment hazard count for the user
+const incrementHazardCount = async () => {
+  const db = getDatabase();
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    console.error('No user is currently logged in');
+    return;
+  }
+
+  const userEmail = currentUser.email.replace('.', '_'); // Replace '.' to avoid issues in Firebase keys
+  const hazardRef = ref(db, `hazard_receive/${userEmail}/receive`);
+
+  try {
+    // Retrieve the current 'receive' value and increment it
+    const snapshot = await get(hazardRef);
+    let currentCount = snapshot.exists() ? snapshot.val() : 0; // Default to 0 if not found
+    currentCount += 1; // Increment by 1
+
+    // Update the receive count in the database under the user's email
+    await update(ref(db, `hazard_receive/${userEmail}`), { receive: currentCount });
+  } catch (error) {
+    console.error('Error updating hazard count:', error);
+  }
+};
 
   // Define onMapReady function to animate the camera when the map is ready
   const onMapReady = () => {
@@ -860,6 +895,10 @@ const fetchAlternateRoute = async (currentLocation) => {
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
         <Text style={styles.backButtonText}>Back</Text>
       </TouchableOpacity>
+      <View style={styles.countContainer}>
+        <Text style={styles.receiveCountText}>{receiveCount}</Text>
+      </View>
+
           <BottomSheet
         ref={bottomSheetRef}
         snapPoints={[220, '50%', '75%']} // Set a taller snap point to accommodate all visible content
@@ -1057,6 +1096,20 @@ photo: {
     fontSize: 14,
     color: '#1e90ff',
     marginBottom: 5,
+  },
+  countContainer: {
+    position: 'absolute',
+    top: 40,
+    right: 10,
+    backgroundColor: '#F6EF00', 
+    borderRadius: 20,
+    padding: 10,
+    zIndex: 10, // Make sure it appears on top
+  },
+  receiveCountText: {
+    fontSize: 18,
+    color: '#000', // White text color
+    fontWeight: 'bold',
   },
 });
 

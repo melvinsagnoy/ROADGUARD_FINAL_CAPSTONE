@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, Switch, ScrollView, Animated } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, Switch, ScrollView } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import NavBar from './NavBar';
 import { auth, firestore } from '../firebaseConfig';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import { useFocusEffect } from '@react-navigation/native';
 
-const SearchScreen = ({ navigation, activeNav, setActiveNav , toggleTheme, isDarkTheme }) => {
+const SearchScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
   const [isMenuModalVisible, setMenuModalVisible] = useState(false);
   const [isSettingsModalVisible, setSettingsModalVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -17,15 +16,6 @@ const SearchScreen = ({ navigation, activeNav, setActiveNav , toggleTheme, isDar
   const [userRank, setUserRank] = useState(0);
   const [rankDescription, setRankDescription] = useState('');
   const [allUsers, setAllUsers] = useState([]);
-  const [iconScales, setIconScales] = useState({
-    home: new Animated.Value(1),
-    search: new Animated.Value(1),
-    add: new Animated.Value(1),
-    bell: new Animated.Value(1),
-    user: new Animated.Value(1),
-  });
-  
-
 
   const fetchUserData = useCallback(async () => {
     const user = auth.currentUser;
@@ -45,40 +35,6 @@ const SearchScreen = ({ navigation, activeNav, setActiveNav , toggleTheme, isDar
       }
     }
   }, []);
-
-
-  useFocusEffect(
-    React.useCallback(() => {
-      setActiveNav('Search'); // Set active tab to 'Search' when this screen is focused
-    }, [])
-  );
-
-  const animateIcon = (iconName) => {
-    Animated.sequence([
-      Animated.timing(iconScales[iconName], {
-        toValue: 0.8,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(iconScales[iconName], {
-        toValue: 1.2,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(iconScales[iconName], {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  // Function to handle active screen switch
-  const setActiveScreen = (screen) => {
-    setActiveNav(screen);
-    navigation.navigate(screen);
-  };
-
 
   const fetchAllUsersData = useCallback(async () => {
     const usersCollectionRef = collection(firestore, 'users');
@@ -108,17 +64,6 @@ const SearchScreen = ({ navigation, activeNav, setActiveNav , toggleTheme, isDar
   useEffect(() => {
     refreshData();
   }, [refreshData]);
-
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('state', (e) => {
-      const index = e.data.state.index; // Get the current screen index
-      const routeName = e.data.state.routeNames[index]; // Get the current route name
-      setActiveNav(routeName); // Set the active tab based on the route name
-    });
-
-    return unsubscribe;
-  }, [navigation]);
 
   const toggleMenuModal = () => {
     setMenuModalVisible(prev => !prev);
@@ -268,8 +213,7 @@ const SearchScreen = ({ navigation, activeNav, setActiveNav , toggleTheme, isDar
         </TouchableOpacity>
       </View>
 
-      
-
+      <NavBar navigation={navigation} />
     </View>
   );
 };
@@ -524,9 +468,6 @@ const styles = StyleSheet.create({
   },
   settingText: {
     fontSize: 18,
-  },
-  navbarContainer: {
-    justifyContent: 'flex-end',
   },
 });
 

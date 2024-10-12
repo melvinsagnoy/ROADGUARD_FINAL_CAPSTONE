@@ -1,170 +1,166 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert, ActivityIndicator, Image } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { ref, set } from 'firebase/database'; // Import Firebase Realtime Database functions
-import { getDownloadURL, uploadBytes, ref as storageRef } from 'firebase/storage'; // Import Firebase Storage functions
-import { database, storage, auth } from '../firebaseConfig'; // Import the configured database, storage, and auth from your firebaseConfig.js
+import { WebView } from 'react-native-webview';
+import { database } from '../firebaseConfig'; // Import the properly initialized database
+import { ref, get, set } from 'firebase/database'; // Import Firebase Realtime Database functions
+import { getAuth, onAuthStateChanged } from 'firebase/auth'; // Import Firebase Authentication functions
 
 const SubscriptionScreen = ({ navigation }) => {
   const [selectedOption, setSelectedOption] = useState('1 month');
   const [modalVisible, setModalVisible] = useState(false);
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
-  const [qrCodeModalVisible, setQrCodeModalVisible] = useState(false);
-  const [uploadProofModalVisible, setUploadProofModalVisible] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
-  const [inputName, setInputName] = useState('');
-  const [inputDetail, setInputDetail] = useState('');
-  const [proofImage, setProofImage] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
+  const [webViewModalVisible, setWebViewModalVisible] = useState(false); // For WebView modal visibility
+  const [checkoutUrl, setCheckoutUrl] = useState(null); // Store the PayMongo checkout URL
+  const [loading, setLoading] = useState(false); // For handling loading states
+  const [userId, setUserId] = useState(null); // Store the authenticated user's ID
+  const [subscription, setSubscription] = useState(null); // State to store subscription details
 
-  // Get the current user's email on component mount
   useEffect(() => {
-    const user = auth.currentUser;
-    if (user) {
-      setUserEmail(user.email);
-    }
+    const auth = getAuth(); // Initialize Firebase Auth
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUserId(user.uid); // Store the user's UID when logged in
+        await checkUserSubscription(user.uid); // Check if the user has an existing subscription
+      } else {
+        setUserId(null); // No user is logged in
+        Alert.alert('Error', 'You must be logged in to manage subscriptions.');
+        navigation.goBack(); // Navigate back if no user is logged in
+      }
+    });
+
+    return () => unsubscribe(); // Cleanup the listener
   }, []);
+
+  const checkUserSubscription = async (uid) => {
+    try {
+      const subscriptionRef = ref(database, `/subscriptions/${uid}`);
+      const snapshot = await get(subscriptionRef);
+
+      if (snapshot.exists()) {
+        const userSubscription = snapshot.val();
+        setSubscription(userSubscription); // Set the subscription details to state
+      } else {
+        setSubscription(null); // No subscription exists
+      }
+    } catch (error) {
+      console.error('Error fetching subscription:', error);
+    }
+  };
+
+  const createPaymentLink = async (amount, description, remarks) => {
+    try {
+      const PAYMONGO_SECRET_KEY = 'sk_test_vitxniYC2jD3aDuHGc3AZriD'; // Replace with your PayMongo secret key
+
+      const response = await fetch('https://api.paymongo.com/v1/links', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${btoa(PAYMONGO_SECRET_KEY)}`, // Base64 encode the secret key
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: {
+            attributes: {
+              amount: amount * 100, // Convert PHP to centavos (e.g., 100 PHP becomes 10000 centavos)
+              description: description,
+              remarks: remarks,
+              currency: 'PHP',
+            },
+          },
+        }),
+      });
+
+      const data = await response.json();
+      console.log('PayMongo Response:', data);
+
+      if (data && data.data && data.data.attributes) {
+        return data.data.attributes.checkout_url;
+      } else {
+        console.error('Invalid response from PayMongo:', data);
+        Alert.alert('Error', 'Unable to create payment link. Invalid response from PayMongo.');
+      }
+    } catch (error) {
+      console.error('Error creating payment link:', error);
+      Alert.alert('Error', 'Unable to create payment link. Please try again.');
+    }
+  };
 
   const handleSubscription = (option) => {
     setSelectedOption(option);
-    setModalVisible(true); // Show the first modal
+    setModalVisible(true);
   };
 
-  const handleProceed = () => {
-    setModalVisible(false);
-    setPaymentModalVisible(true); // Show the payment modal
-  };
+  const handleProceedToPayment = async () => {
+    setLoading(true);
+    const amount = selectedOption === '1 month' ? 100 : selectedOption === '6 months' ? 500 : 1000;
+    const description = `${selectedOption} subscription`;
+    const remarks = 'Roadguard Subscription';
 
-  const handlePaymentSelection = (method) => {
-    setSelectedPaymentMethod(method);
-    setPaymentModalVisible(false);
-    setDetailsModalVisible(true); // Show the details input modal
-  };
+    const paymentLink = await createPaymentLink(amount, description, remarks);
 
-  const handleConfirmPayment = () => {
-    if (selectedPaymentMethod === 'GCash') {
-      setDetailsModalVisible(false);
-      setQrCodeModalVisible(true); // Show the QR code modal
+    if (paymentLink) {
+      setCheckoutUrl(paymentLink);
+      setLoading(false);
+      setModalVisible(false);
+      setWebViewModalVisible(true);
     } else {
-      Alert.alert('Payment processed successfully');
-      setDetailsModalVisible(false);
+      setLoading(false);
+      Alert.alert('Error', 'Failed to generate payment link.');
     }
   };
 
-  const getQrCodeImage = () => {
-    switch (selectedOption) {
-      case '1 month':
-        return require('../assets/gcash_99.99.png');
-      case '6 months':
-        return require('../assets/gcash_499.99.png');
-      case '12 months':
-        return require('../assets/gcash_999.99.png');
-      default:
-        return null;
-    }
+  const calculateEndDate = (durationInMonths) => {
+    const currentDate = new Date();
+    const endDate = new Date(currentDate);
+    endDate.setMonth(currentDate.getMonth() + durationInMonths);
+    return endDate.toISOString().split('T')[0];
   };
 
-  const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const handlePaymentSuccess = async () => {
+    const durationInMonths = selectedOption === '1 month' ? 1 : selectedOption === '6 months' ? 6 : 12;
+    const amount = selectedOption === '1 month' ? '₱100' : selectedOption === '6 months' ? '₱500' : '₱1000';
+    const startDate = new Date().toISOString().split('T')[0];
+    const endDate = calculateEndDate(durationInMonths);
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
 
-    if (permissionResult.granted === false) {
-      Alert.alert("Permission to access camera roll is required!");
+    if (!currentUser) {
+      Alert.alert('Error', 'User not logged in');
       return;
     }
 
-    const pickerResult = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (!pickerResult.canceled) {
-      setProofImage(pickerResult.assets[0].uri);
-    }
-  };
-
-  const takePhoto = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-
-    if (permissionResult.granted === false) {
-      Alert.alert("Permission to access camera is required!");
-      return;
-    }
-
-    const pickerResult = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (!pickerResult.canceled) {
-      setProofImage(pickerResult.assets[0].uri);
-    }
-  };
-
-  const handleSubmitProof = async () => {
-    if (!proofImage) {
-      Alert.alert("Please select an image as proof of payment.");
-      return;
-    }
+    const subscriptionDetails = {
+      amount,
+      duration: selectedOption,
+      startDate,
+      endDate,
+      active: true,
+      email: currentUser.email,
+    };
 
     try {
-      setIsUploading(true);
+      await set(ref(database, `/subscriptions/${currentUser.uid}`), subscriptionDetails);
 
-      // Upload image to Firebase Storage
-      const response = await fetch(proofImage);
-      const blob = await response.blob();
-      const imageRef = storageRef(storage, `subscription_proof/${Date.now()}_${inputName}.jpg`);
-      await uploadBytes(imageRef, blob);
+      Alert.alert('Payment successful!', 'Thank you for subscribing.');
 
-      // Get the image download URL
-      const downloadURL = await getDownloadURL(imageRef);
-
-      // Get the current timestamp
-      const timestamp = new Date().toISOString();
-
-      // Create a unique ID for the subscription entry
-      const subscriptionId = `sub_${Date.now()}`;
-
-      // Define the data to be stored
-      const subscriptionData = {
-        name: inputName,
-        mobileNumber: inputDetail,
-        proofImage: downloadURL, // Store the download URL of the image
-        timestamp,
-        status: 'Awaiting Approval', // Initial status
-        subscriptionPlan: selectedOption,
-        paymentMethod: selectedPaymentMethod,
-        userEmail: userEmail, // Store the current user's email
-      };
-
-      // Store the subscription data in Firebase Realtime Database
-      await set(ref(database, `subscriptions/${subscriptionId}`), subscriptionData);
-
-      setIsUploading(false);
-      setUploadProofModalVisible(false);
-      setQrCodeModalVisible(false);
-      Alert.alert("Proof of payment uploaded and stored successfully!");
-
-      // Reset the state
-      setProofImage(null);
-      setInputName('');
-      setInputDetail('');
-      setSelectedPaymentMethod('');
-      setSelectedOption('1 month');
+      setSubscription(subscriptionDetails);
+      setWebViewModalVisible(false);
     } catch (error) {
-      setIsUploading(false);
-      Alert.alert("There was an error uploading your proof. Please try again.");
-      console.error(error);
+      console.error('Failed to save subscription:', error);
+      Alert.alert('Error', 'Failed to save your subscription. Please try again.');
+    }
+  };
+
+  const handleWebViewNavigationStateChange = (navState) => {
+    if (navState.url.includes('success')) {
+      handlePaymentSuccess();
+    } else if (navState.url.includes('failure')) {
+      Alert.alert('Payment failed', 'Please try again.');
+      setWebViewModalVisible(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <FontAwesome name="arrow-left" size={24} color="black" />
@@ -173,43 +169,55 @@ const SubscriptionScreen = ({ navigation }) => {
         <FontAwesome name="cog" size={24} color="black" />
       </View>
 
-      {/* Subscription Image */}
       <Image 
-        source={require('../assets/sub_pic.png')}  // Update this line with the correct path
+        source={require('../assets/sub_pic.png')}
         style={styles.image}
       />
 
       <Text style={styles.title}>Upgrade to Premium</Text>
-      <Text style={styles.subtitle}>Use Roadguard ad-free</Text>
-
-      {/* Subscription Options */}
-      <View style={styles.optionsContainer}>
-        <TouchableOpacity 
-          style={[styles.option, selectedOption === '1 month' && styles.selectedOption]} 
-          onPress={() => handleSubscription('1 month')}
-        >
-          <Text style={styles.optionText}>1 month</Text>
-          <Text style={styles.priceText}>₱99.99</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.option, selectedOption === '6 months' && styles.selectedOption]} 
-          onPress={() => handleSubscription('6 months')}
-        >
-          <Text style={styles.optionText}>6 months</Text>
-          <Text style={styles.priceText}>₱499.99</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.option, selectedOption === '12 months' && styles.selectedOption]} 
-          onPress={() => handleSubscription('12 months')}
-        >
-          <Text style={styles.optionText}>12 months</Text>
-          <Text style={styles.priceText}>₱999.99</Text>
-        </TouchableOpacity>
+      <View>
+        <Text style={styles.subtitle}>Use RoadGuard for unlimited hazard alerts</Text>
+        <Text style={styles.subtitle}>Use RoadGuard ad-free</Text>
       </View>
 
-      {/* First Modal for Subscription Confirmation */}
+      {subscription ? (
+        <View style={styles.subscriptionContainer}>
+          <Text style={styles.subscriptionText}>Your Subscription:</Text>
+          <Text style={styles.subscriptionDetails}>
+            {subscription.duration} for {subscription.amount}
+          </Text>
+          <Text style={styles.subscriptionDetails}>Start Date: {subscription.startDate}</Text>
+          <Text style={styles.subscriptionDetails}>End Date: {subscription.endDate}</Text>
+          <Text style={styles.subscriptionDetails}>Status: {subscription.active ? 'Active' : 'Inactive'}</Text>
+        </View>
+      ) : (
+        <View style={styles.optionsContainer}>
+          <TouchableOpacity 
+            style={[styles.option, selectedOption === '1 month' && styles.selectedOption]} 
+            onPress={() => handleSubscription('1 month')}
+          >
+            <Text style={styles.optionText}>1 month</Text>
+            <Text style={styles.priceText}>₱100</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.option, selectedOption === '6 months' && styles.selectedOption]} 
+            onPress={() => handleSubscription('6 months')}
+          >
+            <Text style={styles.optionText}>6 months</Text>
+            <Text style={styles.priceText}>₱500</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.option, selectedOption === '12 months' && styles.selectedOption]} 
+            onPress={() => handleSubscription('12 months')}
+          >
+            <Text style={styles.optionText}>12 months</Text>
+            <Text style={styles.priceText}>₱1000</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <Modal
         animationType="slide"
         transparent={true}
@@ -217,156 +225,45 @@ const SubscriptionScreen = ({ navigation }) => {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <View style={styles.modalView}>
-            <TouchableOpacity 
-              style={[styles.modalOption, selectedOption === '1 month' && styles.selectedOption]} 
-            >
-              <Text style={styles.optionText}>{selectedOption}</Text>
-              <Text style={styles.priceText}>
-                {selectedOption === '1 month' ? '₱99.99' : selectedOption === '6 months' ? '₱499.99' : '₱999.99'}
-              </Text>
-            </TouchableOpacity>
-            <Text style={styles.modalText}>
-              Would you like to proceed to a {selectedOption} plan subscription?
-            </Text>
-            <TouchableOpacity style={styles.proceedButton} onPress={handleProceed}>
-              <Text style={styles.proceedButtonText}>Proceed</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.modalText}>Confirm Subscription: {selectedOption}</Text>
+          <TouchableOpacity onPress={handleProceedToPayment}>
+            <Text style={styles.confirmButton}>Proceed to Payment</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setModalVisible(false)}>
+            <Text style={styles.cancelButton}>Cancel</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
 
-      {/* Second Modal for Payment Method Selection */}
       <Modal
         animationType="slide"
         transparent={true}
-        visible={paymentModalVisible}
-        onRequestClose={() => setPaymentModalVisible(false)}
+        visible={webViewModalVisible}
+        onRequestClose={() => setWebViewModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalText}>
-              Select your payment method
-            </Text>
-            <TouchableOpacity style={styles.paymentButton} onPress={() => handlePaymentSelection('PayMaya')}>
-              <Text style={styles.paymentButtonText}>PayMaya</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.paymentButton} onPress={() => handlePaymentSelection('GCash')}>
-              <Text style={styles.paymentButtonText}>GCash</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setPaymentModalVisible(false)}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Third Modal for Payment Details Input */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={detailsModalVisible}
-        onRequestClose={() => setDetailsModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalText}>
-              {selectedPaymentMethod === 'GCash' ? 'Enter Mobile Number and Name' : 'Enter PayMaya Email and Name'}
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Name"
-              value={inputName}
-              onChangeText={setInputName}
+        <View style={{ flex: 1 }}>
+          {checkoutUrl ? (
+            <WebView 
+              source={{ uri: checkoutUrl }}
+              startInLoadingState={true}
+              renderLoading={() => <ActivityIndicator size="large" color="#FFD700" />}
+              onNavigationStateChange={handleWebViewNavigationStateChange}
             />
-            <TextInput
-              style={styles.input}
-              placeholder={selectedPaymentMethod === 'GCash' ? 'Mobile Number' : 'PayMaya Email'}
-              value={inputDetail}
-              onChangeText={setInputDetail}
-              keyboardType={selectedPaymentMethod === 'GCash' ? 'phone-pad' : 'email-address'}
-            />
-            <TouchableOpacity style={styles.proceedButton} onPress={handleConfirmPayment}>
-              <Text style={styles.proceedButtonText}>Confirm Payment</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setDetailsModalVisible(false)}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+          ) : (
+            <ActivityIndicator size="large" color="#FFD700" style={{ marginTop: 20 }} />
+          )}
+          <TouchableOpacity style={styles.cancelButton} onPress={() => setWebViewModalVisible(false)}>
+            <Text style={styles.cancelButtonText}>Close Payment</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
 
-      {/* QR Code Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={qrCodeModalVisible}
-        onRequestClose={() => setQrCodeModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalText}>
-              Scan this QR code with GCash to pay
-            </Text>
-            <Image 
-              source={getQrCodeImage()}
-              style={styles.qrCode}
-            />
-            <TouchableOpacity 
-              style={styles.doneButton} 
-              onPress={() => setUploadProofModalVisible(true)}
-            >
-              <Text style={styles.doneButtonText}>IF DONE, click here to upload proof</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setQrCodeModalVisible(false)}>
-              <Text style={styles.cancelButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Upload Proof Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={uploadProofModalVisible}
-        onRequestClose={() => setUploadProofModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Upload Proof of Payment</Text>
-            {proofImage ? (
-              <Image source={{ uri: proofImage }} style={styles.proofImage} />
-            ) : (
-              <View style={styles.placeholderImage}>
-                <Text style={styles.placeholderText}>No image selected</Text>
-              </View>
-            )}
-            <TouchableOpacity style={styles.uploadButton} onPress={pickImage}>
-              <Text style={styles.uploadButtonText}>Choose from Gallery</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.uploadButton} onPress={takePhoto}>
-              <Text style={styles.uploadButtonText}>Take a Photo</Text>
-            </TouchableOpacity>
-            {isUploading ? (
-              <ActivityIndicator size="large" color="#FFD700" style={{ marginVertical: 10 }} />
-            ) : (
-              <TouchableOpacity style={styles.submitButton} onPress={handleSubmitProof}>
-                <Text style={styles.submitButtonText}>Submit Proof</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setUploadProofModalVisible(false)}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      {loading && <ActivityIndicator size="large" color="#FFD700" style={styles.loading} />}
     </View>
   );
 };
+
+export default SubscriptionScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -383,13 +280,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-  },
-  image: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'contain',
-    borderRadius: 10,
-    marginBottom: 20,
   },
   title: {
     fontSize: 24,
@@ -434,148 +324,56 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalView: {
-    width: '90%',
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    elevation: 5,
-  },
-  modalOption: {
-    backgroundColor: '#FFF',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    width: '80%',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    marginBottom: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalText: {
-    fontSize: 16,
-    textAlign: 'center',
+    fontSize: 20,
+    color: '#fff',
     marginBottom: 20,
   },
-  proceedButton: {
-    backgroundColor: '#FFD700',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 10,
-    width: '80%',
-  },
-  proceedButtonText: {
+  confirmButton: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-  paymentButton: {
-    backgroundColor: '#FFD700',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
+    color: '#FFD700',
     marginBottom: 10,
-    width: '80%',
-  },
-  paymentButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFF',
   },
   cancelButton: {
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    width: '80%',
+    fontSize: 18,
+    color: 'red',
   },
   cancelButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: 'red',
   },
-  input: {
-    width: '90%',
-    height: 50,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    marginBottom: 10,
-    backgroundColor: '#FFF',
-  },
-  qrCode: {
-    width: 200,
-    height: 200,
-    marginBottom: 20,
-  },
-  doneButton: {
-    backgroundColor: '#FFD700',
-    padding: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 10,
-    width: '90%',
-  },
-  doneButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFF',
-    textAlign: 'center',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  uploadButton: {
-    backgroundColor: '#FFD700',
-    padding: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginVertical: 5,
-    width: '90%',
-  },
-  uploadButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-  proofImage: {
-    width: 250,
-    height: 250,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  placeholderImage: {
-    width: 250,
-    height: 250,
-    borderRadius: 10,
-    backgroundColor: '#eee',
+  loading: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  image: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'contain',
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  subscriptionContainer: {
+    backgroundColor: '#EEE',
+    padding: 20,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  subscriptionText: {
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 10,
   },
-  placeholderText: {
+  subscriptionDetails: {
     fontSize: 16,
-    color: '#555',
-  },
-  submitButton: {
-    backgroundColor: '#32CD32',
-    padding: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginVertical: 10,
-    width: '90%',
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFF',
+    marginBottom: 5,
   },
 });
-
-export default SubscriptionScreen;

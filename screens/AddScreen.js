@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Keyboard, Image } from 'react-native';
-import MapView, { PROVIDER_GOOGLE, Marker, Polyline } from 'react-native-maps';
+import { StyleSheet, View, Text, TouchableOpacity, TouchableWithoutFeedback, Keyboard, Image, Alert } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import axios from 'axios';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getDatabase, ref, onValue, get } from 'firebase/database';
+import { getDatabase, ref, get, onValue } from 'firebase/database';
+import { getAuth } from 'firebase/auth';
+import * as Speech from 'expo-speech'; // Import Expo's Speech API
 
 const AddScreen = ({ navigation }) => {
   const [location, setLocation] = useState(null);
@@ -15,9 +17,71 @@ const AddScreen = ({ navigation }) => {
   const [distance, setDistance] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [searchVisible, setSearchVisible] = useState(false);
+  const [subscriptionValid, setSubscriptionValid] = useState(false); // Subscription validity
+  const [freeTrialExpired, setFreeTrialExpired] = useState(false); // Free trial expired status
   const [postsWithPins, setPostsWithPins] = useState([]);
   const mapRef = useRef(null);
 
+  const googleApiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0'; // Your Google Maps API key
+  const mapboxAccessToken = 'sk.eyJ1Ijoia2F5YXQ0MyIsImEiOiJjbTF3Y21scWIwaGZnMmlyMzA1NjMzanZ3In0.ZWfijGBS43C25JKYqydhfw'; // Your Mapbox API key
+
+  useEffect(() => {
+    checkSubscription();
+  }, []);
+
+  // Check the user's subscription status or hazard count
+  const checkSubscription = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      Alert.alert("Error", "User not logged in");
+      navigation.goBack();
+      return;
+    }
+
+    const userEmail = currentUser.email.replace('.', '_'); // To match Firebase keys
+    const db = getDatabase();
+    const hazardRef = ref(db, `hazard_receive/${userEmail}/receive`);
+    const subscriptionRef = ref(db, `subscriptions/${currentUser.uid}`);
+
+    try {
+      // Check the hazard count
+      const hazardSnapshot = await get(hazardRef);
+      const hazardCount = hazardSnapshot.exists() ? hazardSnapshot.val() : 0;
+
+      // Check subscription status
+      const subscriptionSnapshot = await get(subscriptionRef);
+      const subscriptionData = subscriptionSnapshot.exists() ? subscriptionSnapshot.val() : null;
+
+      // Determine if the user is subscribed or has reached hazard limit
+      if (subscriptionData && subscriptionData.active) {
+        setSubscriptionValid(true);
+      } else if (hazardCount >= 500) {
+        setFreeTrialExpired(true);
+
+        Speech.speak('Subscribe na gaw', {
+          language: 'fil-PH',
+          pitch: 1.0,
+          rate: 0.9,
+        });
+        
+        Alert.alert(
+          'Free Trial Expired',
+          'Your free trial is over. Please subscribe to continue using the app.',
+          [
+            { text: 'Subscribe Now', onPress: () => navigation.navigate('SubscriptionScreen') },
+            { text: 'Not Now', onPress: () => navigation.goBack(), style: 'cancel' }
+          ],
+          { cancelable: false }
+        );
+      }
+    } catch (error) {
+      console.error("Error checking subscription or hazard count:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    }
+  };
+
+  // Fetch current location using Mapbox
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -34,19 +98,17 @@ const AddScreen = ({ navigation }) => {
         },
         async (currentLocation) => {
           const { latitude, longitude } = currentLocation.coords;
-
           setLocation({
             latitude,
             longitude,
-            latitudeDelta: 0.005,  // Reduced for more zoom
-            longitudeDelta: 0.0025, // Reduced for more zoom
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.0025,
           });
 
-          const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw';
           try {
-            const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`);
-            if (response.data.status === 'OK') {
-              const formattedAddress = response.data.results[0].formatted_address;
+            const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxAccessToken}`);
+            if (response.data.features.length > 0) {
+              const formattedAddress = response.data.features[0].place_name;
               setAddress(formattedAddress);
             } else {
               setAddress('Unable to fetch address');
@@ -64,74 +126,42 @@ const AddScreen = ({ navigation }) => {
     })();
   }, []);
 
-
-  useEffect(() => {
-     console.log("Current Location:", location);
-  if (mapRef.current && location) {
-    // Define a zoomed-out region
-    const zoomedOutRegion = {
-      ...location,
-      latitudeDelta: 0.2, // More zoomed out
-      longitudeDelta: 0.2,
-    };
-
-    // Animate the map to the zoomed-out region first
-    mapRef.current.animateToRegion(zoomedOutRegion, 1000); // Zoom out animation for 1 second
-
-    // After a short delay, zoom into the user's location
-    setTimeout(() => {
-      if (mapRef.current) {  // Check if mapRef is still valid
-        mapRef.current.animateToRegion(location, 1500); // Zoom into user's location after delay
-      }
-    }, 1000); // Adjust the delay to match the zoom-out animation timing
-  }
-}, [location]);
-
-  useEffect(() => {
-    (async () => {
-      // Existing location logic here...
-      // Fetch posts and pins
-      fetchPostsWithPins();
-    })();
-  }, []);
-
-  const fetchPostsWithPins = async () => {
-     console.log("Posts with Pins:", postsWithPins);
-  const db = getDatabase(); // Initialize Firebase Realtime Database
-  const postsRef = ref(db, 'posts'); // Reference to the posts node
-
-  onValue(postsRef, async (snapshot) => {
-    const posts = snapshot.val();
-    if (!posts) return;
-
-    const postsArray = Object.keys(posts).map(key => ({ id: key, ...posts[key] }));
-    const filteredPosts = postsArray.filter(post => post.upvotes === 2);
-
-    // Fetch location for each post with 2 upvotes
-    const fetchLocations = filteredPosts.map(async (post) => {
-      const locationRef = ref(db, `posts/${post.id}/location`); // Correct path to location
-      const locationSnapshot = await get(locationRef);
-      const locationData = locationSnapshot.val();
-      return {
-        ...post,
-        location: locationData,
-      };
-    });
-
-    try {
-      const pinnedPosts = await Promise.all(fetchLocations);
-      setPostsWithPins(pinnedPosts);
-    } catch (error) {
-      console.error("Error fetching post locations:", error);
-    }
-  });
-};
-
   useEffect(() => {
     if (mapRef.current && location) {
       mapRef.current.animateToRegion(location, 1000);
     }
   }, [location]);
+
+  useEffect(() => {
+    fetchPostsWithPins();
+  }, []);
+
+  const fetchPostsWithPins = async () => {
+    const db = getDatabase();
+    const postsRef = ref(db, 'posts');
+
+    onValue(postsRef, async (snapshot) => {
+      const posts = snapshot.val();
+      if (!posts) return;
+
+      const postsArray = Object.keys(posts).map(key => ({ id: key, ...posts[key] }));
+      const filteredPosts = postsArray.filter(post => post.upvotes === 2);
+
+      const fetchLocations = filteredPosts.map(async (post) => {
+        const locationRef = ref(db, `posts/${post.id}/location`);
+        const locationSnapshot = await get(locationRef);
+        const locationData = locationSnapshot.val();
+        return { ...post, location: locationData };
+      });
+
+      try {
+        const pinnedPosts = await Promise.all(fetchLocations);
+        setPostsWithPins(pinnedPosts);
+      } catch (error) {
+        console.error("Error fetching post locations:", error);
+      }
+    });
+  };
 
   const handleDestinationSelect = async (data, details) => {
     const destLocation = details.geometry.location;
@@ -139,12 +169,10 @@ const AddScreen = ({ navigation }) => {
       latitude: destLocation.lat,
       longitude: destLocation.lng,
     });
-
     setDestinationAddress(data.description);
 
-    const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw';
     try {
-      const routeResponse = await axios.get(`https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${destLocation.lat},${destLocation.lng}&mode=driving&key=${apiKey}`);
+      const routeResponse = await axios.get(`https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${destLocation.lat},${destLocation.lng}&mode=driving&key=${googleApiKey}`);
       if (routeResponse.data.status === 'OK') {
         const points = routeResponse.data.routes[0].overview_polyline.points;
         setRouteCoordinates(decodePolyline(points));
@@ -197,7 +225,7 @@ const AddScreen = ({ navigation }) => {
     setSearchVisible(true);
   };
 
-   const handleLocationPress = () => {
+  const handleLocationPress = () => {
     if (mapRef.current && location) {
       mapRef.current.animateToRegion(location, 1000);
     }
@@ -225,81 +253,49 @@ const AddScreen = ({ navigation }) => {
   return (
     <TouchableWithoutFeedback onPress={handleClickOutside}>
       <View style={styles.container}>
+
         <MapView
-            ref={mapRef}
-            provider={PROVIDER_GOOGLE}
-            style={styles.map}
-            region={location}
-            customMapStyle={mapStyle}
-          >
-            {location && (
-              <Marker coordinate={location} title="You are here" description={address}>
+          ref={mapRef}
+          style={styles.map}
+          region={location}
+        >
+          {location && (
+            <Marker coordinate={location} title="You are here" description={address}>
+              <Image
+                source={require('../assets/map_user.png')}
+                style={{ width: 40, height: 50 }}
+                resizeMode="stretch"
+              />
+            </Marker>
+          )}
+          {destinationCoords && (
+            <Marker coordinate={destinationCoords} draggable />
+          )}
+          {routeCoordinates.length > 0 && (
+            <Polyline
+              coordinates={routeCoordinates}
+              strokeWidth={4}
+              strokeColor="black"
+            />
+          )}
+          {postsWithPins.map(post => (
+            post.location && (
+              <Marker
+                key={post.id}
+                coordinate={{ latitude: post.location.latitude, longitude: post.location.longitude }}
+                title={post.title}
+                description={`Upvotes: ${post.upvotes}`}
+              >
                 <Image
-                  source={require('../assets/map_user.png')}
-                  style={{ width: 40, height: 50 }}
+                  source={require('../assets/hazard_icon.png')}
+                  style={{ width: 30, height: 30 }}
                   resizeMode="stretch"
                 />
               </Marker>
-            )}
-            {destinationCoords && (
-              <Marker
-                coordinate={destinationCoords}
-                draggable
-                onDragEnd={async (e) => {
-                  const newCoords = e.nativeEvent.coordinate;
-                  setDestinationCoords(newCoords);
+            )
+          ))}
+        </MapView>
 
-                  // Recalculate route and address when the marker is dragged
-                  const apiKey = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw';
-                  try {
-                    const response = await axios.get(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${newCoords.latitude},${newCoords.longitude}&key=${apiKey}`);
-                    if (response.data.status === 'OK') {
-                      const formattedAddress = response.data.results[0].formatted_address;
-                      setDestinationAddress(formattedAddress);
-
-                      // Fetch new route
-                      const routeResponse = await axios.get(`https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${newCoords.latitude},${newCoords.longitude}&mode=driving&key=${apiKey}`);
-                      if (routeResponse.data.status === 'OK') {
-                        const points = routeResponse.data.routes[0].overview_polyline.points;
-                        setRouteCoordinates(decodePolyline(points));
-                        setDistance(routeResponse.data.routes[0].legs[0].distance.text);
-                      } else {
-                        alert('Unable to fetch route');
-                      }
-                    } else {
-                      setDestinationAddress('Unable to fetch address');
-                    }
-                  } catch (error) {
-                    console.error(error);
-                    setDestinationAddress('Unable to fetch address');
-                  }
-                }}
-              />
-            )}
-            {routeCoordinates.length > 0 && (
-              <Polyline
-                coordinates={routeCoordinates}
-                strokeWidth={4}
-                strokeColor="black"
-              />
-            )}
-            {postsWithPins.map(post => (
-              post.location && (
-                <Marker
-                  key={post.id}
-                  coordinate={{ latitude: post.location.latitude, longitude: post.location.longitude }}
-                  title={post.title}
-                  description={`Upvotes: ${post.upvotes}`}
-                >
-                  <Image
-                    source={require('../assets/hazard_icon.png')}
-                    style={{ width: 30, height: 30 }}
-                    resizeMode="stretch"
-                  />
-                </Marker>
-              )
-            ))}
-          </MapView>
         <View style={styles.infoContainer}>
           <View style={styles.locationContainer}>
             <Text style={styles.addressText}>{address}</Text>
@@ -309,18 +305,23 @@ const AddScreen = ({ navigation }) => {
             <Text style={styles.destinationText}>{destinationAddress}</Text>
           </View>
         </View>
+
         <TouchableOpacity style={styles.searchButton} onPress={handleSearchPress}>
           <Icon name="search" size={24} color="black" />
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.locationButton} onPress={handleLocationPress}>
           <Icon name="person-pin-circle" size={24} color="black" />
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.drivingModeButton} onPress={handleDrivingModePress}>
           <Icon name="directions-car" size={24} color="black" />
         </TouchableOpacity>
+
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
+
         {searchVisible && (
           <View style={styles.autocompleteContainer}>
             <GooglePlacesAutocomplete
@@ -328,7 +329,7 @@ const AddScreen = ({ navigation }) => {
               fetchDetails={true}
               onPress={handleDestinationSelect}
               query={{
-                key: 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw',  // Use your API key
+                key: googleApiKey,  // Your Google API key
                 language: 'en',
                 location: `${location.latitude},${location.longitude}`,  // Use current user location
                 radius: 10000,  // Define the search radius (in meters)
@@ -346,7 +347,6 @@ const AddScreen = ({ navigation }) => {
     </TouchableWithoutFeedback>
   );
 };
-
 
 
 const mapStyle = [

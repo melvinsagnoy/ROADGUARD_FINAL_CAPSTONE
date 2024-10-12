@@ -1,147 +1,136 @@
-import React, { useEffect } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, TouchableOpacity, Animated, Easing, StyleSheet, Image } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
 
-const NavBar = ({ activeNav, setActiveNav }) => {
-  const navigation = useNavigation();
+const NavBar = ({ navigation }) => {
+  const [iconScales, setIconScales] = useState({
+    home: new Animated.Value(1),
+    search: new Animated.Value(1),
+    add: new Animated.Value(1),
+    bell: new Animated.Value(1),
+    user: new Animated.Value(1),
+  });
 
-  // Function to handle navigation and update active state
-  const handleNavigation = (screenName) => {
-    console.log(`Navigating to: ${screenName}, Current ActiveNav: ${activeNav}`);
-
-    // Only set the active state if it is not already the active screen
-    if (activeNav !== screenName) {
-      console.log(`Setting ActiveNav to: ${screenName}`);
-      setActiveNav(screenName); // Update the active state
-    }
-
-    // Debugging to see if there's an issue during navigation
-    try {
-      navigation.navigate(screenName); // Navigate to the respective screen
-    } catch (error) {
-      console.log('Navigation error:', error);
-    }
+  const animateIcon = (iconName) => {
+    Animated.sequence([
+      Animated.timing(iconScales[iconName], {
+        toValue: 0.8,
+        duration: 100,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+      Animated.timing(iconScales[iconName], {
+        toValue: 1.2,
+        duration: 100,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+      Animated.timing(iconScales[iconName], {
+        toValue: 1,
+        duration: 100,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
-  // Debugging: Log the active navigation state to verify updates
-  useEffect(() => {
-    console.log('Active Nav (NavBar):', activeNav);
-  }, [activeNav]);
+  const handlePress = (screenName, iconName) => {
+    animateIcon(iconName);
+    navigation.navigate(screenName);
+  };
 
   return (
-    <View style={styles.navContainer}>
-      {/* Home Button */}
+    <View style={styles.navbar}>
       <TouchableOpacity
-        style={[styles.navItem, activeNav === 'Home' ? styles.activeItem : null]}
-        onPress={() => handleNavigation('Home')}
-      >
-        <MaterialIcons name="home" size={30} color={activeNav === 'Home' ? '#FF7F50' : '#808080'} />
-        <Text style={[styles.navText, activeNav === 'Home' ? styles.activeText : null]}>Home</Text>
+        style={styles.navItem}
+        onPress={() => handlePress('Home', 'home')}>
+        <Animated.View style={{ transform: [{ scale: iconScales.home }] }}>
+          <MaterialIcons name="home" size={30} color="#000" />
+        </Animated.View>
       </TouchableOpacity>
-
-      {/* Game Button */}
       <TouchableOpacity
-        style={[styles.navItem, activeNav === 'Search' ? styles.activeItem : null]}
-        onPress={() => handleNavigation('Search')}
-      >
-        <MaterialIcons name="sports-esports" size={30} color={activeNav === 'Search' ? '#FF7F50' : '#808080'} />
-        <Text style={[styles.navText, activeNav === 'Search' ? styles.activeText : null]}>Game</Text>
+        style={styles.navItem}
+        onPress={() => handlePress('Search', 'search')}>
+        <Animated.View style={{ transform: [{ scale: iconScales.search }] }}>
+          <Image source={require('../assets/joystick.png')} style={styles.navIcon} />
+        </Animated.View>
       </TouchableOpacity>
-
-      {/* Middle Button - Map Icon */}
-      <View style={styles.middleButtonContainer}>
-        <TouchableOpacity
-          style={styles.middleButton}
-          onPress={() => handleNavigation('AddScreen')}
-        >
-          <Image
-            source={require('../assets/mapIcon.png')} // Replace with your mapIcon.png path
-            style={styles.middleIcon}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Notifications Button */}
       <TouchableOpacity
-        style={[styles.navItem, activeNav === 'Notifications' ? styles.activeItem : null]}
-        onPress={() => handleNavigation('Notifications')}
-      >
-        <MaterialIcons name="notifications" size={30} color={activeNav === 'Notifications' ? '#FF7F50' : '#808080'} />
-        <Text style={[styles.navText, activeNav === 'Notifications' ? styles.activeText : null]}>Notifications</Text>
+        style={styles.addButtonContainer}
+        onPress={() => handlePress('Add', 'add')}>
+        <Animated.View style={{ transform: [{ scale: iconScales.add }] }}>
+          <Image source={require('../assets/mapIcon.png')} style={styles.addButtonIcon} />
+        </Animated.View>
       </TouchableOpacity>
-
-      {/* Profile Button */}
       <TouchableOpacity
-        style={[styles.navItem, activeNav === 'Profile' ? styles.activeItem : null]}
-        onPress={() => handleNavigation('Profile')}
-      >
-        <MaterialIcons name="account-circle" size={30} color={activeNav === 'Profile' ? '#FF7F50' : '#808080'} />
-        <Text style={[styles.navText, activeNav === 'Profile' ? styles.activeText : null]}>Profile</Text>
+        style={styles.navItem}
+        onPress={() => handlePress('Notifications', 'bell')}>
+        <Animated.View style={{ transform: [{ scale: iconScales.bell }] }}>
+          <MaterialIcons name="notifications" size={30} color="#000" />
+        </Animated.View>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.navItem}
+        onPress={() => handlePress('Profile', 'user')}>
+        <Animated.View style={{ transform: [{ scale: iconScales.user }] }}>
+          <MaterialIcons name="account-circle" size={30} color="#000" />
+        </Animated.View>
       </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  navContainer: {
+  navbar: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    height: 70,
+    backgroundColor: '#E0C55B',
+    borderRadius: 25,
+    borderColor: '#ccc',
+    borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    elevation: 10,
+    padding: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   navItem: {
-    alignItems: 'center',
-    padding: 5,
     flex: 1,
-  },
-  middleButtonContainer: {
-    position: 'absolute',
-    bottom: 60,
-    left: '50%',
-    transform: [{ translateX: -30 }],
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  middleButton: {
+  addButtonContainer: {
+    position: 'absolute',
+    right: 100,
+    top: -35,
+    left: '50%',
+    transform: [{ translateX: -10 }],
     width: 60,
     height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FF7F50',
-    alignItems: 'center',
+    borderRadius: 35,
+    backgroundColor: 'white',
     justifyContent: 'center',
-    elevation: 15,
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    elevation: 5,
+    zIndex: 1,
   },
-  middleIcon: {
+  navIcon: {
     width: 30,
     height: 30,
-    tintColor: '#FFFFFF',
   },
-  navText: {
-    fontSize: 12,
-    color: '#808080',
-  },
-  activeText: {
-    color: '#FF7F50',
-  },
-  activeItem: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#FF7F50',
+  addButtonIcon: {
+    width: 50,
+    height: 50,
   },
 });
 

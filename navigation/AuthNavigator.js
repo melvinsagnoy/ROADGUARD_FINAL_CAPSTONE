@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import FloatingButton from '../screens/FloatingButton';
-import ChatbotModal from '../screens/ChatbotModal';
+import FloatingButton from '../screens/FloatingButton'; // Import FloatingButton
+import ChatbotModal from '../screens/ChatbotModal'; // Import ChatbotModal
 
 // Import screens
 import LoginScreen from '../screens/LoginScreen';
@@ -30,11 +30,11 @@ import PrivacySecurityScreen from '../screens/PrivacySecurityScreen';
 
 const Stack = createStackNavigator();
 
-const AuthNavigator = ({ activeNav, setActiveNav }) => {
+const AuthNavigator = () => {
   const [initialRoute, setInitialRoute] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showFloatingButton, setShowFloatingButton] = useState(false);
-  const [isChatbotVisible, setIsChatbotVisible] = useState(false);
+  const [showFloatingButton, setShowFloatingButton] = useState(false); // State to control button visibility
+  const [isChatbotVisible, setIsChatbotVisible] = useState(false); // State to control chatbot modal visibility
 
   const navigationRef = useNavigationContainerRef();
 
@@ -42,7 +42,11 @@ const AuthNavigator = ({ activeNav, setActiveNav }) => {
     const checkUserLoggedIn = async () => {
       try {
         const userData = await AsyncStorage.getItem('user');
-        setInitialRoute(userData ? 'VerificationOptions' : 'Landing');
+        if (userData) {
+          setInitialRoute('VerificationOptions');
+        } else {
+          setInitialRoute('Landing');
+        }
       } catch (error) {
         console.error('Error checking user login status:', error);
         setInitialRoute('Landing');
@@ -55,11 +59,11 @@ const AuthNavigator = ({ activeNav, setActiveNav }) => {
   }, []);
 
   useEffect(() => {
+    // Listen to navigation state changes to update the floating button visibility
     const unsubscribe = navigationRef?.addListener('state', () => {
       const currentRoute = navigationRef?.getCurrentRoute()?.name;
-      console.log(`Current Route in AuthNavigator: ${currentRoute}`);
 
-      // List of screens where the floating button should not be shown
+      // List of screens where the button should not be shown
       const screensWithoutFloatingButton = [
         'Landing',
         'Login',
@@ -68,7 +72,7 @@ const AuthNavigator = ({ activeNav, setActiveNav }) => {
         'Fingerprint',
         'Passcode',
         'VerificationOptions',
-        'PasscodeVerificationScreen',
+        'PasscodeVerificationScreen'
       ];
 
       if (screensWithoutFloatingButton.includes(currentRoute)) {
@@ -76,54 +80,144 @@ const AuthNavigator = ({ activeNav, setActiveNav }) => {
       } else {
         setShowFloatingButton(true);
       }
-
-      // Only update the activeNav state when it changes
-      if (currentRoute && currentRoute !== activeNav) {
-        console.log(`Setting ActiveNav to: ${currentRoute}`);
-        setActiveNav(currentRoute);
-      }
     });
 
     return () => unsubscribe();
-  }, [navigationRef, activeNav, setActiveNav]);
+  }, [navigationRef]);
 
-  if (isLoading || !initialRoute) {
+  if (isLoading) {
     return null; // Optionally, return a loading indicator here
   }
 
+
   return (
-    <Stack.Navigator initialRouteName={initialRoute}>
-      <Stack.Screen name="Landing" component={LandingScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Home" options={{ headerShown: false }}>
-        {(props) => <HomeScreen {...props} activeNav={activeNav} setActiveNav={setActiveNav} />}
-      </Stack.Screen>
-      <Stack.Screen name="Search" options={{ headerShown: false }}>
-        {(props) => <SearchScreen {...props} activeNav={activeNav} setActiveNav={setActiveNav} />}
-      </Stack.Screen>
-      <Stack.Screen name="Add" options={{ headerShown: false }}>
-        {(props) => <AddScreen {...props} activeNav={activeNav} setActiveNav={setActiveNav} />}
-      </Stack.Screen>
-      <Stack.Screen name="Notifications" options={{ headerShown: false }}>
-        {(props) => <NotificationsScreen {...props} activeNav={activeNav} setActiveNav={setActiveNav} />}
-      </Stack.Screen>
-      <Stack.Screen name="Profile" options={{ headerShown: false }}>
-        {(props) => <ProfileScreen {...props} activeNav={activeNav} setActiveNav={setActiveNav} />}
-      </Stack.Screen>
-      <Stack.Screen name="Fingerprint" component={FingerprintVerification} options={{ headerShown: false }} />
-      <Stack.Screen name="Passcode" component={PasscodeInputScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="VerificationOptions" component={VerificationOptionsScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="PasscodeVerificationScreen" component={PasscodeVerificationScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="GameScreen" component={GameScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="SubscriptionScreen" component={SubscriptionScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="EditPostModal" component={EditPostModal} options={{ presentation: 'modal' }} />
-      <Stack.Screen name="ChatList" component={ChatListScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="PostDetail" component={PostDetail} options={{ headerShown: false }} />
-      <Stack.Screen name="DrivingModeScreen" component={DrivingModeScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="PrivacySecurityScreen" component={PrivacySecurityScreen} options={{ headerShown: false }} />
-    </Stack.Navigator>
+    <NavigationContainer ref={navigationRef}>
+      <Stack.Navigator initialRouteName={initialRoute}>
+        <Stack.Screen
+          name="Landing"
+          component={LandingScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Register"
+          component={RegisterScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ProfileUpdate"
+          component={ProfileUpdateScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Search"
+          component={SearchScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Add"
+          component={AddScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Notifications"
+          component={NotificationsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Fingerprint"
+          component={FingerprintVerification}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Passcode"
+          component={PasscodeInputScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="VerificationOptions"
+          component={VerificationOptionsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PasscodeVerificationScreen"
+          component={PasscodeVerificationScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="GameScreen"
+          component={GameScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SubscriptionScreen"
+          component={SubscriptionScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="EditPostModal"
+          component={EditPostModal}
+          options={{ presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="ChatList"
+          component={ChatListScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ChatScreen"
+          component={ChatScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PostDetail"
+          component={PostDetail}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="DrivingModeScreen"
+          component={DrivingModeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PrivacySecurityScreen"
+          component={PrivacySecurityScreen}
+          options={{ headerShown: false }}
+        />
+      </Stack.Navigator>
+      {/* Conditionally render the FloatingButton based on currentRoute */}
+      {showFloatingButton && (
+        <FloatingButton 
+        onPress={() => {
+          console.log('Floating Button Clicked'); // Debugging log
+          setIsChatbotVisible(true); // Show the chatbot modal when button is clicked
+        }} 
+      />
+    )}
+
+      {/* Chatbot Modal for AI Interaction */}
+      <ChatbotModal
+        visible={isChatbotVisible}
+        onClose={() => {
+          console.log('Chatbot Modal closing...'); // Debugging log
+          setIsChatbotVisible(false);
+        }}
+      />
+    </NavigationContainer>
   );
 };
 

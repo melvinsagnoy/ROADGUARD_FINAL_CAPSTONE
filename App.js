@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { Provider as PaperProvider, DefaultTheme, DarkTheme } from 'react-native-paper';
-import { NavigationContainer } from '@react-navigation/native'; // Import NavigationContainer
-import MainLayout from './screens/MainLayout'; // Adjust the path if needed
+import AuthNavigator from './navigation/AuthNavigator';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
@@ -89,11 +88,9 @@ const App = () => {
   }
 
   return (
-    <NavigationContainer> 
-      <PaperProvider theme={theme}>
-        <MainLayout /> 
-      </PaperProvider>
-    </NavigationContainer>
+    <PaperProvider theme={theme}>
+      <AuthNavigator />
+    </PaperProvider>
   );
 };
 

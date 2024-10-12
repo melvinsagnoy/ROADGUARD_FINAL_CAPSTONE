@@ -4,7 +4,8 @@ import { StyleSheet, TouchableOpacity, Dimensions, Animated, PanResponder, View,
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const FloatingButton = ({ onPress }) => {
-  const pan = useRef(new Animated.ValueXY({ x: screenWidth - 80, y: screenHeight / 2 })).current;
+  // Initial position in the top-left corner
+  const pan = useRef(new Animated.ValueXY({ x: 20, y: 20 })).current; // Top-left corner
   const isDragging = useRef(false);
   const dragThreshold = 5;
 
@@ -57,7 +58,6 @@ const FloatingButton = ({ onPress }) => {
         {...panResponder.panHandlers}
       >
         <TouchableOpacity style={styles.buttonContent} onPress={onPress}>
-          {/* Replace FontAwesome icon with Image component */}
           <Image source={require('../assets/floating_icon.png')} style={styles.image} />
         </TouchableOpacity>
       </Animated.View>
@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
     shadowRadius: 2,
+    zIndex: 1000, // Make sure the button stays above other content
   },
   buttonContent: {
     width: '100%',
@@ -93,9 +94,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   image: {
-    width: 40, // Set the width of the image
-    height: 40, // Set the height of the image
-    resizeMode: 'contain', // Adjust the image size as needed
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
   },
 });
 
