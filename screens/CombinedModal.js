@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 
-const CombinedModal = ({ visible, onClose, onAgree }) => {
+const CombinedModal = ({ visible, onClose, onAgree, showAgreeButton = true }) => {
+  const [isAgreeButtonVisible, setIsAgreeButtonVisible] = useState(false);
   const scrollViewRef = useRef(null);
 
   const handleScroll = (event) => {
@@ -11,8 +12,18 @@ const CombinedModal = ({ visible, onClose, onAgree }) => {
     const scrollPosition = contentOffset.y;
 
     if (scrollPosition + viewportHeight >= contentHeight - 50) {
-      onAgree();
+      // When the user scrolls to the bottom, show the Agree button
+      setIsAgreeButtonVisible(true);
+    } else {
+      // Hide the Agree button if not at the bottom
+      setIsAgreeButtonVisible(false);
     }
+  };
+
+  const handleAgree = () => {
+    // Handle the action when the user agrees
+    onAgree(); // Trigger the onAgree function passed from the parent
+    onClose(); // Close the modal after agreement
   };
 
   return (
@@ -84,6 +95,13 @@ const CombinedModal = ({ visible, onClose, onAgree }) => {
               If you have any questions about this Privacy Policy, please contact us at [Your Contact Information].
             </Text>
           </ScrollView>
+
+          {showAgreeButton && isAgreeButtonVisible && (
+            <TouchableOpacity style={styles.agreeButton} onPress={handleAgree}>
+              <Text style={styles.agreeButtonText}>Agree</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
@@ -136,6 +154,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   closeButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  agreeButton: {
+    backgroundColor: '#28a745',
+    borderRadius: 25,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  agreeButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',

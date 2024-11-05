@@ -7,7 +7,7 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { getDatabase, ref, get, onValue } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
-import * as Speech from 'expo-speech'; // Import Expo's Speech API
+import * as Speech from 'expo-speech';
 
 const AddScreen = ({ navigation }) => {
   const [location, setLocation] = useState(null);
@@ -17,19 +17,17 @@ const AddScreen = ({ navigation }) => {
   const [distance, setDistance] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [searchVisible, setSearchVisible] = useState(false);
-  const [subscriptionValid, setSubscriptionValid] = useState(false); // Subscription validity
-  const [freeTrialExpired, setFreeTrialExpired] = useState(false); // Free trial expired status
+  const [subscriptionValid, setSubscriptionValid] = useState(false);
+  const [freeTrialExpired, setFreeTrialExpired] = useState(false);
   const [postsWithPins, setPostsWithPins] = useState([]);
   const mapRef = useRef(null);
 
-  const googleApiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0'; // Your Google Maps API key
-  const mapboxAccessToken = 'sk.eyJ1Ijoia2F5YXQ0MyIsImEiOiJjbTF3Y21scWIwaGZnMmlyMzA1NjMzanZ3In0.ZWfijGBS43C25JKYqydhfw'; // Your Mapbox API key
+  const googleApiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0';
 
   useEffect(() => {
     checkSubscription();
   }, []);
 
-  // Check the user's subscription status or hazard count
   const checkSubscription = async () => {
     const auth = getAuth();
     const currentUser = auth.currentUser;
@@ -39,21 +37,18 @@ const AddScreen = ({ navigation }) => {
       return;
     }
 
-    const userEmail = currentUser.email.replace('.', '_'); // To match Firebase keys
+    const userEmail = currentUser.email.replace('.', '_');
     const db = getDatabase();
     const hazardRef = ref(db, `hazard_receive/${userEmail}/receive`);
     const subscriptionRef = ref(db, `subscriptions/${currentUser.uid}`);
 
     try {
-      // Check the hazard count
       const hazardSnapshot = await get(hazardRef);
       const hazardCount = hazardSnapshot.exists() ? hazardSnapshot.val() : 0;
 
-      // Check subscription status
       const subscriptionSnapshot = await get(subscriptionRef);
       const subscriptionData = subscriptionSnapshot.exists() ? subscriptionSnapshot.val() : null;
 
-      // Determine if the user is subscribed or has reached hazard limit
       if (subscriptionData && subscriptionData.active) {
         setSubscriptionValid(true);
       } else if (hazardCount >= 500) {
@@ -81,7 +76,6 @@ const AddScreen = ({ navigation }) => {
     }
   };
 
-  // Fetch current location using Mapbox
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -93,8 +87,8 @@ const AddScreen = ({ navigation }) => {
       const subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
-          timeInterval: 10000, // Update every 10 seconds
-          distanceInterval: 10, // Update every 10 meters
+          timeInterval: 10000,
+          distanceInterval: 10,
         },
         async (currentLocation) => {
           const { latitude, longitude } = currentLocation.coords;
@@ -106,9 +100,11 @@ const AddScreen = ({ navigation }) => {
           });
 
           try {
-            const response = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxAccessToken}`);
-            if (response.data.features.length > 0) {
-              const formattedAddress = response.data.features[0].place_name;
+            const response = await axios.get(
+              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${googleApiKey}`
+            );
+            if (response.data.results.length > 0) {
+              const formattedAddress = response.data.results[0].formatted_address;
               setAddress(formattedAddress);
             } else {
               setAddress('Unable to fetch address');
@@ -172,7 +168,9 @@ const AddScreen = ({ navigation }) => {
     setDestinationAddress(data.description);
 
     try {
-      const routeResponse = await axios.get(`https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${destLocation.lat},${destLocation.lng}&mode=driving&key=${googleApiKey}`);
+      const routeResponse = await axios.get(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${destLocation.lat},${destLocation.lng}&mode=driving&key=${googleApiKey}`
+      );
       if (routeResponse.data.status === 'OK') {
         const points = routeResponse.data.routes[0].overview_polyline.points;
         setRouteCoordinates(decodePolyline(points));
@@ -253,11 +251,11 @@ const AddScreen = ({ navigation }) => {
   return (
     <TouchableWithoutFeedback onPress={handleClickOutside}>
       <View style={styles.container}>
-
         <MapView
           ref={mapRef}
           style={styles.map}
           region={location}
+          customMapStyle={mapStyle}
         >
           {location && (
             <Marker coordinate={location} title="You are here" description={address}>
@@ -329,10 +327,10 @@ const AddScreen = ({ navigation }) => {
               fetchDetails={true}
               onPress={handleDestinationSelect}
               query={{
-                key: googleApiKey,  // Your Google API key
+                key: googleApiKey,
                 language: 'en',
-                location: `${location.latitude},${location.longitude}`,  // Use current user location
-                radius: 10000,  // Define the search radius (in meters)
+                location: `${location.latitude},${location.longitude}`,
+                radius: 10000,
               }}
               styles={{
                 container: styles.autocompleteContainer,

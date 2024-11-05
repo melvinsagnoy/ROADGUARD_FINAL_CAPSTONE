@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Image, Modal, FlatList, Alert  } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Image, Modal, FlatList, Alert, ScrollView  } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, firestore, storage , database} from '../firebaseConfig';
@@ -533,45 +533,48 @@ if (newPhoneNumber.trim()) {
   </View>
 </Modal>
 
-  <Modal
-        animationType="slide"
-        transparent={true}
-        visible={rewardsModalVisible}
-        onRequestClose={() => setRewardsModalVisible(false)}
+<Modal
+  animationType="slide"
+  transparent={true}
+  visible={rewardsModalVisible}
+  onRequestClose={() => setRewardsModalVisible(false)}
+>
+  <View style={styles.modalContainer}>
+    <View style={styles.rewardModal}>
+      <Text style={styles.modalTitle}>Available Rewards</Text>
+      <Text style={styles.pointsText}>Your Points: {points}</Text>
+      <ScrollView
+        contentContainerStyle={styles.rewardsGrid}
+        showsVerticalScrollIndicator={false} // Optional: hide vertical scrollbar
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.rewardModal}>
-            <Text style={styles.modalTitle}>Available Rewards</Text>
-            <Text style={styles.pointsText}>Your Points: {points}</Text>
-            <View style={styles.rewardsGrid}>
-              {rewards.map((item, index) => (
-                <View
-                  key={item.id}
-                  style={[
-                    styles.rewardItem,
-                    { marginRight: (index % 2 === 0) ? 10 : 0 }
-                  ]}
-                >
-                  <Image source={{ uri: item.imageUrl }} style={styles.rewardImage} />
-                  <View style={styles.rewardDetails}>
-                    <Text style={styles.rewardText}>{item.rewardName}</Text>
-                    <Text style={styles.rewardPoints}>{item.pointsRequired} points</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.redeemButton}
-                    onPress={() => handleRedeem(item.id)}
-                  >
-                    <Text style={styles.redeemButtonText}>Redeem</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+        {rewards.map((item, index) => (
+          <View
+            key={item.id}
+            style={[
+              styles.rewardItem,
+              { marginRight: index % 2 === 0 ? 10 : 0 }
+            ]}
+          >
+            <Image source={{ uri: item.imageUrl }} style={styles.rewardImage} />
+            <View style={styles.rewardDetails}>
+              <Text style={styles.rewardText}>{item.rewardName}</Text>
+              <Text style={styles.rewardPoints}>{item.pointsRequired} points</Text>
             </View>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setRewardsModalVisible(false)}>
-              <Text style={styles.closeButtonText}>Close</Text>
+            <TouchableOpacity
+              style={styles.redeemButton}
+              onPress={() => handleRedeem(item.id)}
+            >
+              <Text style={styles.redeemButtonText}>Redeem</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
+        ))}
+      </ScrollView>
+      <TouchableOpacity style={styles.closeButton} onPress={() => setRewardsModalVisible(false)}>
+        <Text style={styles.closeButtonText}>Close</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
 
       <Modal
   animationType="slide"
@@ -871,8 +874,9 @@ sendMessageButton: {
     marginLeft: 10,
     fontSize: 16,
   },
-   rewardModal: {
+  rewardModal: {
     width: '90%',
+    maxHeight: '80%', // Limit height
     backgroundColor: '#fff',
     borderRadius: 8,
     padding: 20,

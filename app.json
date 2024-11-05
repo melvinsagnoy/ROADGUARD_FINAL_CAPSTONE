@@ -9,7 +9,7 @@
       "eas": {
         "projectId": "040d11b4-94c9-471b-b0e1-233bd69d0b57"
       },
-      "googleMapsApiKey": "AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw"
+      "googleMapsApiKey": "AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0"
     },
     "owner": "melvinsagnoy",
     "android": {
@@ -20,14 +20,14 @@
       "package": "com.melvinsagnoy.ROADGUARD",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw"
+          "apiKey": "AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0"
         }
       }
     },
     "ios": {
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show your position on the map.",
-        "GMSApiKey": "AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw"
+        "GMSApiKey": "AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0"
       }
     },
     "plugins": [

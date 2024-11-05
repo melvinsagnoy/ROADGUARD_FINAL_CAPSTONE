@@ -30,7 +30,7 @@ import { BackHandler } from 'react-native';
 import axios from 'axios';
 import WeatherHeader from './WeatherHeader'; // Import the WeatherHeader component
 
-const MAPBOX_ACCESS_TOKEN = 'sk.eyJ1Ijoia2F5YXQ0MyIsImEiOiJjbTF3Y21scWIwaGZnMmlyMzA1NjMzanZ3In0.ZWfijGBS43C25JKYqydhfw';
+const GOOGLE_API_KEY = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0';
 
 
 const HomeScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
@@ -167,22 +167,22 @@ const formatDate = (timestamp) => {
 };
 
 const fetchAddress = async (latitude, longitude) => {
-  try {
-    const response = await axios.get(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_ACCESS_TOKEN}`
-    );
-    
-    // Check if results exist and if there are any results
-    if (response.data && response.data.features && response.data.features.length > 0) {
-      const address = response.data.features[0].place_name; // Updated to access place_name
+    try {
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`
+      );
+      const address = response.data.results[0].formatted_address;
       return address;
-    } else {
+    } catch (error) {
+      console.error('Error fetching address:', error);
       return 'Address not available';
     }
-  } catch (error) {
-    console.error('Error fetching address:', error);
-    return 'Address not available';
-  }
+  };
+
+  const openCommentModal = (postId) => {
+  console.log('Opening comment modal for Post ID:', postId); // Add this line to debug
+  setSelectedPostId(postId);
+  setCommentModalVisible(true);
 };
 
 const closeCommentModal = () => {

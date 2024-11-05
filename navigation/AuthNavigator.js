@@ -27,6 +27,8 @@ import ChatScreen from '../screens/ChatScreen';
 import PostDetail from '../screens/PostDetail';
 import DrivingModeScreen from '../screens/DrivingModeScreen';
 import PrivacySecurityScreen from '../screens/PrivacySecurityScreen';
+import ChangePasscodeScreen from '../screens/privacy_security/ChangePasscodeScreen';
+import NotificationChannelsScreen from '../screens/privacy_security/NotificationChannelsScreen';
 
 const Stack = createStackNavigator();
 
@@ -196,6 +198,15 @@ const AuthNavigator = () => {
         <Stack.Screen
           name="PrivacySecurityScreen"
           component={PrivacySecurityScreen}
+          options={{ headerShown: false }}
+        />
+         <Stack.Screen name="ChangePasscode"
+          component={ChangePasscodeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="NotificationChannels"
+          component={NotificationChannelsScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
