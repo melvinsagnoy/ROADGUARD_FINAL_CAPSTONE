@@ -4,6 +4,7 @@ import { ref, set, onValue } from 'firebase/database';
 import { firestore, auth, database } from '../firebaseConfig'; // Ensure proper exports
 import { doc, getDoc } from 'firebase/firestore';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import { useColorScheme } from 'react-native';
 
 const CommentModal = ({ visible, onClose, postId }) => {
   const [comment, setComment] = useState('');
@@ -16,6 +17,30 @@ const CommentModal = ({ visible, onClose, postId }) => {
   const [commentLoading, setCommentLoading] = useState(false); // Loading state for submitting a comment
   const [replyLoading, setReplyLoading] = useState({}); // Loading state for submitting a reply (per comment)
 
+  const colorScheme = useColorScheme(); // Detect device theme preference
+  const isDarkMode = colorScheme === 'dark';
+
+  // Define theme styles
+  const theme = {
+    light: {
+      background: '#FFFFFF',
+      text: '#000000',
+      inputBackground: '#F2F2F2',
+      buttonBackground: '#007AFF',
+      buttonText: '#FFFFFF',
+      borderColor: '#CCCCCC',
+    },
+    dark: {
+      background: '#1E1E1E',
+      text: '#E0E0E0',
+      inputBackground: '#333333',
+      buttonBackground: '#BB86FC',
+      buttonText: '#E0E0E0',
+      borderColor: '#555555',
+    },
+  };
+
+  const currentTheme = isDarkMode ? theme.dark : theme.light;
   useEffect(() => {
     if (!postId) {
       console.log('No Post ID provided, exiting useEffect.');
@@ -167,155 +192,124 @@ const CommentModal = ({ visible, onClose, postId }) => {
   };
 
   const renderReply = ({ item }) => (
-    <View style={styles.replyContainer}>
+    <View style={[styles.replyContainer, { backgroundColor: currentTheme.inputBackground }]}>
       <View style={styles.replyHeader}>
         {item.profileImage ? (
-          <Image
-            source={{ uri: item.profileImage }}
-            style={styles.profileImage}
-            onError={(error) => console.error('Image Load Error:', error.nativeEvent.error)}
-          />
+          <Image source={{ uri: item.profileImage }} style={styles.profileImage} />
         ) : (
           <View style={styles.profileImagePlaceholder} />
         )}
         <View style={styles.replyContent}>
-          <Text style={styles.replyAuthor}>{item.displayName || 'Anonymous'}</Text>
-          <Text style={styles.replyText}>{item.text}</Text>
-          <Text style={styles.replyTime}>{formatDate(item.createdAt)}</Text>
+          <Text style={[styles.replyAuthor, { color: currentTheme.text }]}>{item.displayName || 'Anonymous'}</Text>
+          <Text style={[styles.replyText, { color: currentTheme.text }]}>{item.text}</Text>
+          <Text style={[styles.replyTime, { color: currentTheme.text }]}>{formatDate(item.createdAt)}</Text>
         </View>
       </View>
     </View>
   );
 
   const renderComment = ({ item }) => {
-  const replies = Object.values(item.replies || {});
-  const visibleReplies = expandedReplies[item.id] ? replies : replies.slice(0, 3);
+    const replies = Object.values(item.replies || {});
+    const visibleReplies = expandedReplies[item.id] ? replies : replies.slice(0, 3);
 
-  return (
-    <View style={styles.commentContainer}>
-      <View style={styles.commentHeader}>
-        {item.profileImage ? (
-          <Image
-            source={{ uri: item.profileImage }} // Ensure the profile image is used
-            style={styles.profileImage}
-            onError={(error) => console.error('Image Load Error:', error.nativeEvent.error)}
-          />
-        ) : (
-          <View style={styles.profileImagePlaceholder} />
-        )}
-        <View style={styles.commentContent}>
-          <Text style={styles.commentAuthor}>{item.displayName || 'Anonymous'}</Text>
-          <Text style={styles.commentText}>{item.text}</Text>
-          <Text style={styles.commentTime}>{formatDate(item.createdAt)}</Text>
-          <TouchableOpacity
-            style={styles.replyButton}
-            onPress={() => {
-              if (showReplyInput === item.id) {
-                setShowReplyInput(null); // Hide reply input if already open
-              } else {
-                setReplyingTo(item.id);
-                setShowReplyInput(item.id); // Manage reply input visibility for the selected comment
-              }
-            }}
-          >
-            <Text style={styles.replyButtonText}>Reply</Text>
-          </TouchableOpacity>
-          {showReplyInput === item.id && (
-            <View style={styles.replyInputContainer}>
-              {replyingTo && (
-                <Text style={styles.replyToLabel}>Replying to {item.displayName || 'Anonymous'}</Text>
-              )}
-              <View style={styles.replyInputWrapper}>
+    return (
+      <View style={[styles.commentContainer, { backgroundColor: currentTheme.inputBackground }]}>
+        <View style={styles.commentHeader}>
+          {item.profileImage ? (
+            <Image source={{ uri: item.profileImage }} style={styles.profileImage} />
+          ) : (
+            <View style={styles.profileImagePlaceholder} />
+          )}
+          <View style={styles.commentContent}>
+            <Text style={[styles.commentAuthor, { color: currentTheme.text }]}>{item.displayName || 'Anonymous'}</Text>
+            <Text style={[styles.commentText, { color: currentTheme.text }]}>{item.text}</Text>
+            <Text style={[styles.commentTime, { color: currentTheme.text }]}>{formatDate(item.createdAt)}</Text>
+            <TouchableOpacity
+              style={styles.replyButton}
+              onPress={() => setShowReplyInput(showReplyInput === item.id ? null : item.id)}
+            >
+              <Text style={[styles.replyButtonText, { color: currentTheme.buttonBackground }]}>Reply</Text>
+            </TouchableOpacity>
+            {showReplyInput === item.id && (
+              <View style={styles.replyInputContainer}>
                 <TextInput
-                  style={styles.textInput}
+                  style={[styles.textInput, { backgroundColor: currentTheme.inputBackground, color: currentTheme.text }]}
                   placeholder="Write a reply..."
+                  placeholderTextColor={currentTheme.text}
                   value={comment}
                   onChangeText={setComment}
                 />
                 <TouchableOpacity
                   style={styles.sendButton}
                   onPress={() => handleReplySubmit(item.id)}
-                  disabled={replyLoading[item.id]} // Disable button when loading
+                  disabled={replyLoading[item.id]}
                 >
                   {replyLoading[item.id] ? (
-                    <ActivityIndicator size="small" color="#007AFF" />
+                    <ActivityIndicator size="small" color={currentTheme.buttonBackground} />
                   ) : (
-                    <Icon name="send" size={20} color="#007AFF" />
+                    <Icon name="send" size={20} color={currentTheme.buttonBackground} />
                   )}
                 </TouchableOpacity>
               </View>
-            </View>
-          )}
-          {item.replies && (
-            <>
-              <FlatList
-                data={visibleReplies}
-                renderItem={renderReply}
-                keyExtractor={(reply) => reply.createdAt.toString()} // Unique key based on timestamp
-                style={styles.repliesList}
-              />
-              {replies.length > 3 && (
-                <TouchableOpacity
-                  style={styles.viewMoreButton}
-                  onPress={() => {
-                    setExpandedReplies(prevState => ({
-                      ...prevState,
-                      [item.id]: !prevState[item.id], // Toggle expansion state for the selected comment
-                    }));
-                  }}
-                >
-                  <Text style={styles.viewMoreText}>
-                    {expandedReplies[item.id] ? 'View Less' : `View ${replies.length - 3} More Replies`}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
+            )}
+            {item.replies && (
+              <>
+                <FlatList
+                  data={visibleReplies}
+                  renderItem={renderReply}
+                  keyExtractor={(reply) => reply.createdAt.toString()}
+                  style={styles.repliesList}
+                />
+                {replies.length > 3 && (
+                  <TouchableOpacity
+                    style={styles.viewMoreButton}
+                    onPress={() => setExpandedReplies(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                  >
+                    <Text style={[styles.viewMoreText, { color: currentTheme.buttonBackground }]}>
+                      {expandedReplies[item.id] ? 'View Less' : `View ${replies.length - 3} More Replies`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </View>
         </View>
       </View>
-    </View>
-  );
-};
+    );
+  };
 
   return (
-    <Modal
-      visible={visible}
-      onRequestClose={onClose}
-      animationType="slide"
-    >
-      <View style={styles.container}>
-        <Text style={styles.title}>Comments</Text>
+    <Modal visible={visible} onRequestClose={onClose} animationType="slide">
+      <View style={[styles.container, { backgroundColor: currentTheme.background }]}>
+        <Text style={[styles.title, { color: currentTheme.buttonBackground }]}>Comments</Text>
         {loading ? (
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={currentTheme.buttonBackground} />
         ) : (
           <FlatList
             data={comments}
             renderItem={renderComment}
             keyExtractor={(item) => item.id}
-            ListEmptyComponent={<Text style={styles.noCommentsText}>No comments yet.</Text>}
+            ListEmptyComponent={<Text style={[styles.noCommentsText, { color: currentTheme.text }]}>No comments yet.</Text>}
           />
         )}
         <View style={styles.inputContainer}>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { backgroundColor: currentTheme.inputBackground, color: currentTheme.text }]}
             placeholder="Write a comment..."
+            placeholderTextColor={currentTheme.text}
             value={comment}
             onChangeText={setComment}
           />
-          <TouchableOpacity
-            style={styles.sendButton}
-            onPress={handleSubmit}
-            disabled={commentLoading} // Disable button when loading
-          >
+          <TouchableOpacity style={styles.sendButton} onPress={handleSubmit} disabled={commentLoading}>
             {commentLoading ? (
-              <ActivityIndicator size="small" color="#007AFF" />
+              <ActivityIndicator size="small" color={currentTheme.buttonBackground} />
             ) : (
-              <Icon name="send" size={20} color="#007AFF" />
+              <Icon name="send" size={20} color={currentTheme.buttonBackground} />
             )}
           </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>Close</Text>
+        <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: currentTheme.inputBackground }]}>
+          <Text style={[styles.closeButtonText, { color: currentTheme.buttonBackground }]}>Close</Text>
         </TouchableOpacity>
       </View>
     </Modal>

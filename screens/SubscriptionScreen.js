@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert, ActivityIndicator, Image, useColorScheme  } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { database } from '../firebaseConfig'; // Import the properly initialized database
@@ -14,6 +14,40 @@ const SubscriptionScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false); // For handling loading states
   const [userId, setUserId] = useState(null); // Store the authenticated user's ID
   const [subscription, setSubscription] = useState(null); // State to store subscription details
+
+
+  // Detect system color scheme
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  // Define themes
+  const lightTheme = {
+    background: '#F5F5F5',
+    text: '#000',
+    headerText: '#FFD700',
+    subtitle: '#555',
+    modalBackground: 'rgba(0,0,0,0.5)',
+    confirmText: '#FFD700',
+    cancelText: 'red',
+    selectedBorderColor: '#FFD700',
+    optionBackground: '#FFF',
+    subscriptionBackground: '#EEE',
+  };
+
+  const darkTheme = {
+    background: '#121212',
+    text: '#E0E0E0',
+    headerText: '#FFD700',
+    subtitle: '#AAA',
+    modalBackground: 'rgba(255,255,255,0.1)',
+    confirmText: '#FFD700',
+    cancelText: 'red',
+    selectedBorderColor: '#FFD700',
+    optionBackground: '#1E1E1E',
+    subscriptionBackground: '#333',
+  };
+
+  const theme = isDarkMode ? darkTheme : lightTheme;
 
   useEffect(() => {
     const auth = getAuth(); // Initialize Firebase Auth
@@ -160,105 +194,92 @@ const SubscriptionScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <FontAwesome name="arrow-left" size={24} color="black" />
+          <FontAwesome name="arrow-left" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>ROADGUARD</Text>
-        <FontAwesome name="cog" size={24} color="black" />
+        <Text style={[styles.headerTitle, { color: theme.text }]}>ROADGUARD</Text>
+        <FontAwesome name="cog" size={24} color={theme.text} />
       </View>
 
-      <Image 
-        source={require('../assets/sub_pic.png')}
-        style={styles.image}
-      />
+      <Image source={require('../assets/sub_pic.png')} style={styles.image} />
 
-      <Text style={styles.title}>Upgrade to Premium</Text>
+      <Text style={[styles.title, { color: theme.headerText }]}>Upgrade to Premium</Text>
       <View>
-        <Text style={styles.subtitle}>Use RoadGuard for unlimited hazard alerts</Text>
-        <Text style={styles.subtitle}>Use RoadGuard ad-free</Text>
+        <Text style={[styles.subtitle, { color: theme.subtitle }]}>Use RoadGuard for unlimited hazard alerts</Text>
+        <Text style={[styles.subtitle, { color: theme.subtitle }]}>Use RoadGuard ad-free</Text>
       </View>
 
       {subscription ? (
-        <View style={styles.subscriptionContainer}>
-          <Text style={styles.subscriptionText}>Your Subscription:</Text>
-          <Text style={styles.subscriptionDetails}>
+        <View style={[styles.subscriptionContainer, { backgroundColor: theme.subscriptionBackground }]}>
+          <Text style={[styles.subscriptionText, { color: theme.text }]}>Your Subscription:</Text>
+          <Text style={[styles.subscriptionDetails, { color: theme.text }]}>
             {subscription.duration} for {subscription.amount}
           </Text>
-          <Text style={styles.subscriptionDetails}>Start Date: {subscription.startDate}</Text>
-          <Text style={styles.subscriptionDetails}>End Date: {subscription.endDate}</Text>
-          <Text style={styles.subscriptionDetails}>Status: {subscription.active ? 'Active' : 'Inactive'}</Text>
+          <Text style={[styles.subscriptionDetails, { color: theme.text }]}>Start Date: {subscription.startDate}</Text>
+          <Text style={[styles.subscriptionDetails, { color: theme.text }]}>End Date: {subscription.endDate}</Text>
+          <Text style={[styles.subscriptionDetails, { color: theme.text }]}>Status: {subscription.active ? 'Active' : 'Inactive'}</Text>
         </View>
       ) : (
         <View style={styles.optionsContainer}>
-          <TouchableOpacity 
-            style={[styles.option, selectedOption === '1 month' && styles.selectedOption]} 
+          <TouchableOpacity
+            style={[styles.option, selectedOption === '1 month' && { borderColor: theme.selectedBorderColor }]}
             onPress={() => handleSubscription('1 month')}
           >
-            <Text style={styles.optionText}>1 month</Text>
-            <Text style={styles.priceText}>₱100</Text>
+            <Text style={[styles.optionText, { color: theme.text }]}>1 month</Text>
+            <Text style={[styles.priceText, { color: theme.subtitle }]}>₱100</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.option, selectedOption === '6 months' && styles.selectedOption]} 
+          <TouchableOpacity
+            style={[styles.option, selectedOption === '6 months' && { borderColor: theme.selectedBorderColor }]}
             onPress={() => handleSubscription('6 months')}
           >
-            <Text style={styles.optionText}>6 months</Text>
-            <Text style={styles.priceText}>₱500</Text>
+            <Text style={[styles.optionText, { color: theme.text }]}>6 months</Text>
+            <Text style={[styles.priceText, { color: theme.subtitle }]}>₱500</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={[styles.option, selectedOption === '12 months' && styles.selectedOption]} 
+          <TouchableOpacity
+            style={[styles.option, selectedOption === '12 months' && { borderColor: theme.selectedBorderColor }]}
             onPress={() => handleSubscription('12 months')}
           >
-            <Text style={styles.optionText}>12 months</Text>
-            <Text style={styles.priceText}>₱1000</Text>
+            <Text style={[styles.optionText, { color: theme.text }]}>12 months</Text>
+            <Text style={[styles.priceText, { color: theme.subtitle }]}>₱1000</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalText}>Confirm Subscription: {selectedOption}</Text>
+      <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
+        <View style={[styles.modalContainer, { backgroundColor: theme.modalBackground }]}>
+          <Text style={[styles.modalText, { color: theme.text }]}>Confirm Subscription: {selectedOption}</Text>
           <TouchableOpacity onPress={handleProceedToPayment}>
-            <Text style={styles.confirmButton}>Proceed to Payment</Text>
+            <Text style={[styles.confirmButton, { color: theme.confirmText }]}>Proceed to Payment</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setModalVisible(false)}>
-            <Text style={styles.cancelButton}>Cancel</Text>
+            <Text style={[styles.cancelButton, { color: theme.cancelText }]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </Modal>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={webViewModalVisible}
-        onRequestClose={() => setWebViewModalVisible(false)}
-      >
+      <Modal animationType="slide" transparent visible={webViewModalVisible} onRequestClose={() => setWebViewModalVisible(false)}>
         <View style={{ flex: 1 }}>
           {checkoutUrl ? (
-            <WebView 
+            <WebView
               source={{ uri: checkoutUrl }}
-              startInLoadingState={true}
-              renderLoading={() => <ActivityIndicator size="large" color="#FFD700" />}
+              startInLoadingState
+              renderLoading={() => <ActivityIndicator size="large" color={theme.headerText} />}
               onNavigationStateChange={handleWebViewNavigationStateChange}
             />
           ) : (
-            <ActivityIndicator size="large" color="#FFD700" style={{ marginTop: 20 }} />
+            <ActivityIndicator size="large" color={theme.headerText} style={{ marginTop: 20 }} />
           )}
           <TouchableOpacity style={styles.cancelButton} onPress={() => setWebViewModalVisible(false)}>
-            <Text style={styles.cancelButtonText}>Close Payment</Text>
+            <Text style={[styles.cancelButtonText, { color: theme.cancelText }]}>Close Payment</Text>
           </TouchableOpacity>
         </View>
       </Modal>
 
-      {loading && <ActivityIndicator size="large" color="#FFD700" style={styles.loading} />}
+      {loading && <ActivityIndicator size="large" color={theme.headerText} style={styles.loading} />}
     </View>
   );
 };

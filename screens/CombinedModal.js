@@ -1,9 +1,35 @@
 import React, { useRef, useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView, useColorScheme } from 'react-native';
 
 const CombinedModal = ({ visible, onClose, onAgree, showAgreeButton = true }) => {
   const [isAgreeButtonVisible, setIsAgreeButtonVisible] = useState(false);
   const scrollViewRef = useRef(null);
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  // Define the theme based on light or dark mode
+  const theme = {
+    light: {
+      overlayBackground: 'rgba(255, 255, 255, 0.8)',
+      modalBackground: '#FFFFFF',
+      titleText: '#333333',
+      bodyText: '#666666',
+      buttonBackground: '#007BFF',
+      agreeButtonBackground: '#28a745',
+      buttonText: '#FFFFFF',
+    },
+    dark: {
+      overlayBackground: 'rgba(0, 0, 0, 0.8)',
+      modalBackground: '#2b2b2b',
+      titleText: '#e5e5e5',
+      bodyText: '#c7c7c7',
+      buttonBackground: '#1E90FF',
+      agreeButtonBackground: '#28a745',
+      buttonText: '#FFFFFF',
+    },
+  };
+
+  const currentTheme = isDarkMode ? theme.dark : theme.light;
 
   const handleScroll = (event) => {
     const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
@@ -21,27 +47,17 @@ const CombinedModal = ({ visible, onClose, onAgree, showAgreeButton = true }) =>
   };
 
   const handleAgree = () => {
-    // Handle the action when the user agrees
     onAgree(); // Trigger the onAgree function passed from the parent
     onClose(); // Close the modal after agreement
   };
 
   return (
-    <Modal
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-      animationType="fade"
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <ScrollView
-            ref={scrollViewRef}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-          >
-            <Text style={styles.modalTitle}>Terms and Conditions</Text>
-            <Text style={styles.modalText}>
+    <Modal transparent={true} visible={visible} onRequestClose={onClose} animationType="fade">
+      <View style={[styles.modalContainer, { backgroundColor: currentTheme.overlayBackground }]}>
+        <View style={[styles.modalContent, { backgroundColor: currentTheme.modalBackground }]}>
+          <ScrollView ref={scrollViewRef} onScroll={handleScroll} scrollEventThrottle={16}>
+            <Text style={[styles.modalTitle, { color: currentTheme.titleText }]}>Terms and Conditions</Text>
+            <Text style={[styles.modalText, { color: currentTheme.bodyText }]}>
               Welcome to RoadGuard! {'\n'}
               {'\n'}
               These Terms and Conditions ("Terms") govern your use of our application. By accessing or using RoadGuard, you agree to be bound by these Terms. If you do not agree with any part of these Terms, you must not use our app. {'\n'}
@@ -72,8 +88,8 @@ const CombinedModal = ({ visible, onClose, onAgree, showAgreeButton = true }) =>
               **Contact Us** {'\n'}
               If you have any questions about these Terms, please contact us at [Your Contact Information].
             </Text>
-            <Text style={styles.modalTitle}>Privacy Policy</Text>
-            <Text style={styles.modalText}>
+            <Text style={[styles.modalTitle, { color: currentTheme.titleText }]}>Privacy Policy</Text>
+            <Text style={[styles.modalText, { color: currentTheme.bodyText }]}>
               Your privacy is important to us. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application. Please read it carefully. {'\n'}
               {'\n'}
               1. **Information We Collect** {'\n'}
@@ -97,13 +113,13 @@ const CombinedModal = ({ visible, onClose, onAgree, showAgreeButton = true }) =>
           </ScrollView>
 
           {showAgreeButton && isAgreeButtonVisible && (
-            <TouchableOpacity style={styles.agreeButton} onPress={handleAgree}>
-              <Text style={styles.agreeButtonText}>Agree</Text>
+            <TouchableOpacity style={[styles.agreeButton, { backgroundColor: currentTheme.agreeButtonBackground }]} onPress={handleAgree}>
+              <Text style={[styles.agreeButtonText, { color: currentTheme.buttonText }]}>Agree</Text>
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>Close</Text>
+          <TouchableOpacity style={[styles.closeButton, { backgroundColor: currentTheme.buttonBackground }]} onPress={onClose}>
+            <Text style={[styles.closeButtonText, { color: currentTheme.buttonText }]}>Close</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -116,12 +132,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)', // Darkened the overlay color slightly
   },
   modalContent: {
     width: '85%',
     maxHeight: '70%',
-    backgroundColor: '#2b2b2b', // Darker background for the modal content
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
@@ -134,19 +148,16 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#e5e5e5', // Light gray for the title text
     marginBottom: 10,
     textAlign: 'center',
   },
   modalText: {
     fontSize: 16,
-    color: '#c7c7c7', // Slightly darker gray for the body text
     lineHeight: 24,
     marginBottom: 15,
     textAlign: 'justify',
   },
   closeButton: {
-    backgroundColor: '#007BFF',
     borderRadius: 25,
     paddingVertical: 8,
     paddingHorizontal: 18,
@@ -154,12 +165,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   closeButtonText: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
   },
   agreeButton: {
-    backgroundColor: '#28a745',
     borderRadius: 25,
     paddingVertical: 8,
     paddingHorizontal: 18,
@@ -167,7 +176,6 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   agreeButtonText: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
   },

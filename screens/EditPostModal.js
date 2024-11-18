@@ -6,12 +6,27 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
+  useColorScheme,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker'; 
+import { Picker } from '@react-native-picker/picker';
 
 const EditPostModal = ({ visible, onClose, onSubmit, currentPostContent }) => {
   const [title, setTitle] = useState(currentPostContent.title);
   const [body, setBody] = useState(currentPostContent.body);
+
+  // Use device preferences for light or dark mode
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  // Define themes based on device preference
+  const theme = {
+    background: isDarkMode ? '#1E1E1E' : '#FFFFFF',
+    text: isDarkMode ? '#E0E0E0' : '#000000',
+    inputBorder: isDarkMode ? '#444444' : '#CCCCCC',
+    buttonBackground: isDarkMode ? '#BB86FC' : '#E0C55B',
+    buttonText: isDarkMode ? '#E0E0E0' : '#000000',
+    overlayBackground: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.5)',
+  };
 
   const handleSave = () => {
     onSubmit({ title, body });
@@ -19,13 +34,13 @@ const EditPostModal = ({ visible, onClose, onSubmit, currentPostContent }) => {
 
   return (
     <Modal visible={visible} transparent={true} animationType="slide">
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Edit Post</Text>
+      <View style={[styles.modalOverlay, { backgroundColor: theme.overlayBackground }]}>
+        <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+          <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Post</Text>
           
           <Picker
             selectedValue={title}
-            style={styles.picker}
+            style={[styles.picker, { color: theme.text, borderColor: theme.inputBorder }]}
             onValueChange={(itemValue) => setTitle(itemValue)}
           >
             <Picker.Item label="Select an Issue" value="" />
@@ -42,18 +57,22 @@ const EditPostModal = ({ visible, onClose, onSubmit, currentPostContent }) => {
           </Picker>
 
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              { borderColor: theme.inputBorder, color: theme.text, backgroundColor: theme.background },
+            ]}
             value={body}
             onChangeText={setBody}
             placeholder="Body"
+            placeholderTextColor={isDarkMode ? '#888888' : '#AAAAAA'}
             multiline
           />
           <View style={styles.buttonContainer}>
-            <TouchableOpacity onPress={onClose} style={styles.button}>
-              <Text style={styles.buttonText}>Cancel</Text>
+            <TouchableOpacity onPress={onClose} style={[styles.button, { backgroundColor: theme.buttonBackground }]}>
+              <Text style={[styles.buttonText, { color: theme.buttonText }]}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} style={styles.button}>
-              <Text style={styles.buttonText}>Save</Text>
+            <TouchableOpacity onPress={handleSave} style={[styles.button, { backgroundColor: theme.buttonBackground }]}>
+              <Text style={[styles.buttonText, { color: theme.buttonText }]}>Save</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -67,11 +86,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     width: '80%',
-    backgroundColor: 'white',
     borderRadius: 10,
     padding: 20,
     elevation: 5,
@@ -84,19 +101,17 @@ const styles = StyleSheet.create({
   picker: {
     width: '100%',
     height: 40,
-    borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 5,
     marginBottom: 15,
   },
   input: {
-    height: 100, // Increased height for multiline input
-    borderColor: 'gray',
+    height: 100,
     borderWidth: 1,
     marginBottom: 15,
     paddingLeft: 10,
     borderRadius: 5,
-    textAlignVertical: 'top', // Ensures text starts from the top
+    textAlignVertical: 'top',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -106,10 +121,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 5,
-    backgroundColor: '#E0C55B',
   },
   buttonText: {
-    color: '#000',
     fontWeight: 'bold',
   },
 });

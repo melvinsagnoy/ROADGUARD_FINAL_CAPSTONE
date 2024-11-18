@@ -1,11 +1,19 @@
 import React, { useRef } from 'react';
-import { Modal, View, Text, Button, StyleSheet, ScrollView } from 'react-native';
+import { Modal, View, Text, Button, StyleSheet, ScrollView, useColorScheme } from 'react-native';
 
 const TermsModal = ({ visible, onClose, onAgree }) => {
   const scrollViewRef = useRef(null);
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  const currentTheme = {
+    background: isDarkMode ? '#1E1E1E' : '#FFFFFF',
+    text: isDarkMode ? '#E0E0E0' : '#000000',
+    modalOverlay: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.5)',
+  };
 
   const handleScroll = (event) => {
-    if (event.nativeEvent.contentOffset.y > 100) { // Adjust scroll distance as needed
+    if (event.nativeEvent.contentOffset.y > 100) {
       onAgree();
     }
   };
@@ -16,15 +24,15 @@ const TermsModal = ({ visible, onClose, onAgree }) => {
       visible={visible}
       onRequestClose={onClose}
     >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
+      <View style={[styles.modalContainer, { backgroundColor: currentTheme.modalOverlay }]}>
+        <View style={[styles.modalContent, { backgroundColor: currentTheme.background }]}>
           <ScrollView
             ref={scrollViewRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
           >
-            <Text style={styles.modalTitle}>Terms and Conditions</Text>
-            <Text style={styles.modalText}>
+            <Text style={[styles.modalTitle, { color: currentTheme.text }]}>Terms and Conditions</Text>
+            <Text style={[styles.modalText, { color: currentTheme.text }]}>
               Welcome to [Your App Name]! {'\n'}
               {'\n'}
               These Terms and Conditions ("Terms") govern your use of our application. By accessing or using [Your App Name], you agree to be bound by these Terms. If you do not agree with any part of these Terms, you must not use our app. {'\n'}
@@ -68,11 +76,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     width: '80%',
-    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 20,
     alignItems: 'center',

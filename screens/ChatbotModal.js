@@ -1,6 +1,5 @@
-// ChatbotModal.js
 import React, { useState, useEffect, useRef } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Animated } from 'react-native';
+import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Animated, useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -37,11 +36,33 @@ const TypingIndicator = () => {
 const ChatbotModal = ({ visible, onClose, userId }) => {
   const [message, setMessage] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
-  const [replying, setReplying] = useState(false); // State to track if AI is replying
-  const scrollViewRef = useRef(null); // Create a ref for the ScrollView
+  const [replying, setReplying] = useState(false);
+  const scrollViewRef = useRef(null);
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
 
-  const GEMINI_API_KEY = 'AIzaSyC3YMwzYGLKRh-YTmrcuYBrlbf49YCG498'; // Replace with your actual API key
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+  const theme = {
+    light: {
+      background: '#f7f7f7',
+      text: '#333',
+      inputBackground: '#fff',
+      inputBorder: '#ddd',
+      buttonBackground: '#007AFF',
+      buttonText: '#fff',
+      overlayBackground: 'rgba(0, 0, 0, 0.5)',
+    },
+    dark: {
+      background: '#1E1E1E',
+      text: '#E0E0E0',
+      inputBackground: '#2C2C2C',
+      inputBorder: '#444',
+      buttonBackground: '#BB86FC',
+      buttonText: '#E0E0E0',
+      overlayBackground: 'rgba(255, 255, 255, 0.1)',
+    },
+  };
+
+  const currentTheme = isDarkMode ? theme.dark : theme.light;
 
   useEffect(() => {
     if (visible && userId) {
@@ -77,15 +98,14 @@ const ChatbotModal = ({ visible, onClose, userId }) => {
     saveChatHistory(updatedChatMessages);
     setMessage('');
 
-    // Display "Replying..." message while AI is generating a response
     setReplying(true);
     const replyingMessage = { role: 'assistant', content: 'Replying...' };
     const messagesWithReplying = [...updatedChatMessages, replyingMessage];
     setChatMessages(messagesWithReplying);
 
     try {
+      const genAI = new GoogleGenerativeAI('AIzaSyC3YMwzYGLKRh-YTmrcuYBrlbf49YCG498');
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
       const result = await model.generateContent(message);
 
       const botMessage = {
@@ -93,7 +113,6 @@ const ChatbotModal = ({ visible, onClose, userId }) => {
         content: result.response.text().trim(),
       };
 
-      // Replace "Replying..." with the actual response from the AI
       const finalChatMessages = [...updatedChatMessages, botMessage];
       setChatMessages(finalChatMessages);
       saveChatHistory(finalChatMessages);
@@ -102,21 +121,17 @@ const ChatbotModal = ({ visible, onClose, userId }) => {
       alert('Failed to get a response. Please try again.');
     }
 
-    // Remove "Replying..." message and reset replying state
     setReplying(false);
   };
 
   return (
     <Modal animationType="slide" transparent={true} visible={visible} onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
+      <View style={[styles.modalOverlay, { backgroundColor: currentTheme.overlayBackground }]}>
+        <View style={[styles.modalContainer, { backgroundColor: currentTheme.background }]}>
           <View style={styles.header}>
-            <Text style={styles.title}>RoadGuard AI powered by Gemini</Text>
+            <Text style={[styles.title, { color: currentTheme.text }]}>RoadGuard AI powered by Gemini</Text>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              {/* Wrap the Icon in a Text component */}
-              <Text>
-                <Icon name="close-circle" size={30} color="#ff5c5c" />
-              </Text>
+              <Icon name="close-circle" size={30} color="#ff5c5c" />
             </TouchableOpacity>
           </View>
           <ScrollView
@@ -131,25 +146,25 @@ const ChatbotModal = ({ visible, onClose, userId }) => {
                   styles.messageContainer,
                   msg.role === 'user' ? styles.userMessage : styles.botMessage,
                   msg.content === 'Replying...' && styles.replyingMessage,
+                  { backgroundColor: msg.role === 'user' ? currentTheme.inputBackground : currentTheme.background },
                 ]}
               >
-                <Text style={styles.messageText}>{msg.content === 'Replying...' && replying ? <TypingIndicator /> : msg.content}</Text>
+                <Text style={[styles.messageText, { color: currentTheme.text }]}>
+                  {msg.content === 'Replying...' && replying ? <TypingIndicator /> : msg.content}
+                </Text>
               </View>
             ))}
           </ScrollView>
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { backgroundColor: currentTheme.inputBackground, borderColor: currentTheme.inputBorder }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: currentTheme.text }]}
               placeholder="Type your message..."
-              placeholderTextColor="#888"
+              placeholderTextColor={isDarkMode ? '#888' : '#555'}
               value={message}
               onChangeText={setMessage}
             />
-            <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage} disabled={replying}>
-              {/* Wrap the Icon in a Text component */}
-              <Text>
-                <Icon name="send" size={25} color={replying ? '#ccc' : 'white'} />
-              </Text>
+            <TouchableOpacity style={[styles.sendButton, { backgroundColor: currentTheme.buttonBackground }]} onPress={handleSendMessage} disabled={replying}>
+              <Icon name="send" size={25} color={replying ? '#ccc' : currentTheme.buttonText} />
             </TouchableOpacity>
           </View>
         </View>
@@ -163,12 +178,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContainer: {
     width: '90%',
     height: '80%',
-    backgroundColor: '#f7f7f7',
     borderRadius: 20,
     padding: 20,
     shadowColor: '#000',
@@ -185,7 +198,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
   },
   chatContainer: {
     flex: 1,
@@ -196,38 +208,28 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 10,
     maxWidth: '75%',
-    alignSelf: 'flex-start',
   },
   userMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#cce5ff',
-    borderRadius: 15,
-    padding: 10,
     borderBottomRightRadius: 0,
   },
   botMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 15,
-    padding: 10,
     borderBottomLeftRadius: 0,
   },
   replyingMessage: {
-    backgroundColor: '#fffae6',
     alignSelf: 'center',
+    backgroundColor: '#fffae6',
   },
   messageText: {
     fontSize: 16,
-    color: '#333',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 25,
     paddingHorizontal: 10,
-    backgroundColor: '#fff',
     marginBottom: 15,
     shadowColor: '#000',
     shadowOpacity: 0.1,
@@ -237,12 +239,10 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 40,
-    borderColor: 'transparent',
     paddingHorizontal: 10,
     fontSize: 16,
   },
   sendButton: {
-    backgroundColor: '#007AFF',
     padding: 10,
     borderRadius: 25,
     alignItems: 'center',
@@ -251,7 +251,6 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     alignSelf: 'flex-end',
-    marginTop: 10,
     backgroundColor: 'transparent',
   },
   typingIndicatorContainer: {
@@ -261,7 +260,6 @@ const styles = StyleSheet.create({
   },
   typingDot: {
     fontSize: 30,
-    color: '#888',
     marginHorizontal: 2,
   },
 });

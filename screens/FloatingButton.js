@@ -1,9 +1,26 @@
 import React, { useRef } from 'react';
-import { StyleSheet, TouchableOpacity, Dimensions, Animated, PanResponder, View, Image } from 'react-native';
+import { StyleSheet, TouchableOpacity, Dimensions, Animated, PanResponder, View, Image, useColorScheme } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const FloatingButton = ({ onPress }) => {
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  // Define the theme styles
+  const theme = {
+    light: {
+      backgroundColor: '#FFFFFF',
+      shadowColor: '#000000',
+    },
+    dark: {
+      backgroundColor: '#2C2C2C',
+      shadowColor: '#FFFFFF',
+    },
+  };
+
+  const currentTheme = isDarkMode ? theme.dark : theme.light;
+
   // Initial position in the top-left corner
   const pan = useRef(new Animated.ValueXY({ x: 20, y: 20 })).current; // Top-left corner
   const isDragging = useRef(false);
@@ -53,6 +70,8 @@ const FloatingButton = ({ onPress }) => {
           styles.floatingButton,
           {
             transform: pan.getTranslateTransform(),
+            backgroundColor: currentTheme.backgroundColor,
+            shadowColor: currentTheme.shadowColor,
           },
         ]}
         {...panResponder.panHandlers}
@@ -75,13 +94,11 @@ const styles = StyleSheet.create({
   floatingButton: {
     width: 60,
     height: 60,
-    backgroundColor: '#ffff',
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'absolute',
     elevation: 5,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
     shadowRadius: 2,

@@ -1,11 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, Switch, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, Switch, ScrollView, useColorScheme  } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import NavBar from './NavBar';
 import { auth, firestore } from '../firebaseConfig';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 
+
 const SearchScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
+  // Define light and dark themes
+const lightTheme = {
+  background: '#FFFFFF',
+  text: '#000000',
+  primary: '#E0C55B',
+  modalBackground: '#FFFFFF',
+};
+
+const darkTheme = {
+  background: '#121212',
+  text: '#E0E0E0',
+  primary: '#1F1F1F',
+  modalBackground: '#1F1F1F',
+};
+const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+  const theme = isDarkMode ? darkTheme : lightTheme;
   const [isMenuModalVisible, setMenuModalVisible] = useState(false);
   const [isSettingsModalVisible, setSettingsModalVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -94,25 +112,8 @@ const SearchScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Modal
-        visible={isMenuModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={toggleMenuModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: '#FFFFFF' }]}>
-            <TouchableOpacity onPress={handleSettings}>
-              <Text style={styles.modalText1}>Settings</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleLogout}>
-              <Text style={styles.modalText2}>Logout</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      
       <Modal
         visible={isSettingsModalVisible}
         transparent={true}
@@ -120,13 +121,13 @@ const SearchScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
         onRequestClose={() => setSettingsModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: '#FFFFFF' }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
             <View style={styles.settingOption}>
-              <Text style={styles.settingText}>Dark Mode</Text>
+              <Text style={[styles.settingText, { color: theme.text }]}>Dark Mode</Text>
               <Switch value={isDarkTheme} onValueChange={toggleTheme} />
             </View>
             <TouchableOpacity onPress={() => setSettingsModalVisible(false)}>
-              <Text style={styles.modalText2}>Close</Text>
+              <Text style={[styles.modalText2, { color: theme.text }]}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -139,77 +140,71 @@ const SearchScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
         onRequestClose={handleCloseLeaderboards}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.leaderboardModalContent}>
-            <Text style={styles.leaderboardTitle}>Leaderboards</Text>
+          <View style={[styles.leaderboardModalContent, { backgroundColor: theme.background }]}>
+            <Text style={[styles.leaderboardTitle, { color: theme.text }]}>Leaderboards</Text>
             <ScrollView style={styles.leaderboardContainer}>
               {allUsers.map((user, index) => (
-                <View key={user.email} style={styles.leaderboardItem}>
+                <View key={user.email} style={[styles.leaderboardItem, { backgroundColor: theme.primary }]}>
                   {index + 1 === 1 && <Image source={require('../assets/gold_crown.png')} style={styles.crownImage} />}
                   {index + 1 === 2 && <Image source={require('../assets/silver_crown.png')} style={styles.crownImage} />}
                   {index + 1 === 3 && <Image source={require('../assets/bronze_crown.png')} style={styles.crownImage} />}
-                  <Text style={styles.leaderboardScore}>{user.totalPoints} points</Text>
-                  <Text style={styles.leaderboardName}>{user.displayName || 'Unknown'}</Text>
+                  <Text style={[styles.leaderboardScore, { color: theme.text }]}>{user.totalPoints} points</Text>
+                  <Text style={[styles.leaderboardName, { color: theme.text }]}>{user.displayName || 'Unknown'}</Text>
                 </View>
               ))}
             </ScrollView>
-            <TouchableOpacity style={styles.closeButton} onPress={handleCloseLeaderboards}>
-              <Text style={styles.closeButtonText}>Close</Text>
+            <TouchableOpacity style={[styles.closeButton, { backgroundColor: theme.primary }]}>
+              <Text style={[styles.closeButtonText, { color: theme.text }]}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      <View style={styles.header}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.text }]}>
         <Image source={require('../assets/icon.png')} style={styles.logo} />
-        <Text style={styles.headerTitle}>RoadGuard</Text>
-        <TouchableOpacity onPress={toggleMenuModal}>
-          <MaterialIcons name="menu" size={30} color="#333" />
-        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>RoadGuard</Text>
       </View>
 
-      <View style={styles.rankContainer}>
+      {/* Rank Container */}
+      <View style={[styles.rankContainer, { backgroundColor: theme.primary, shadowColor: theme.text }]}>
         <View style={styles.rankInfo}>
-          <Text style={styles.rankText}>
-            {userRank === 1 && <Image source={require('../assets/gold_crown.png')} style={styles.crownImageSmall} />}
-            {userRank === 2 && <Image source={require('../assets/silver_crown.png')} style={styles.crownImageSmall} />}
-            {userRank === 3 && <Image source={require('../assets/bronze_crown.png')} style={styles.crownImageSmall} />}
-            {userRank > 3 && <Text style={styles.rankText}>#{userRank}</Text>}
-            {userName}
-          </Text>
+          <Text style={[styles.rankText, { color: theme.text }]}>{userName}</Text>
           <TouchableOpacity onPress={refreshScores} style={styles.refreshIcon}>
-            <MaterialIcons name="refresh" size={24} color="#333" />
+            <MaterialIcons name="refresh" size={24} color={theme.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.rankBadgeContainer}>
-          <View style={styles.rankBadge}>
-            <Text style={styles.rankBadgeText}>{userRank}</Text>
+          <View style={[styles.rankBadge, { backgroundColor: theme.background }]}>
+            <Text style={[styles.rankBadgeText, { color: theme.text }]}>{userRank}</Text>
           </View>
           <View style={styles.pointsContainer}>
-            <Text style={styles.pointsText}>{userPoints} points</Text>
-            <Text style={styles.rankDescription}>{rankDescription}</Text>
+            <Text style={[styles.pointsText, { color: theme.text }]}>{userPoints} points</Text>
+            <Text style={[styles.rankDescription, { color: theme.text }]}>{rankDescription}</Text>
             <TouchableOpacity onPress={handleViewLeaderboards}>
-              <Text style={styles.viewLeaderboard}>View leaderboards →</Text>
+              <Text style={[styles.viewLeaderboard, { color: theme.primary }]}>View leaderboards →</Text>
             </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      <View style={styles.gameContainer}>
+      {/* Game Container */}
+      <View style={[styles.gameContainer, { backgroundColor: theme.primary, shadowColor: theme.text }]}>
         <Image source={require('../assets/thumbnail.png')} style={styles.thumbnail} />
-        <Text style={styles.title}>RoadGuard Racer</Text>
-        <Text style={styles.description}>
+        <Text style={[styles.title, { color: theme.text }]}>RoadGuard Racer</Text>
+        <Text style={[styles.description, { color: theme.text }]}>
           Mechanics:
           {"\n"}- Swipe to move the car left or right.
           {"\n"}- Avoid obstacles on the road.
           {"\n"}- Collect points by passing through gaps.
         </Text>
         <TouchableOpacity
-          style={[styles.playButton, isHovered && styles.playButtonHover]}
+          style={[styles.playButton, isHovered && styles.playButtonHover, { backgroundColor: theme.primary }]}
           onPress={() => navigation.navigate('GameScreen')}
           onPressIn={() => setIsHovered(true)}
           onPressOut={() => setIsHovered(false)}
         >
-          <Text style={[styles.playButtonText, isHovered && styles.playButtonTextHover]}>Play</Text>
+          <Text style={[styles.playButtonText, { color: theme.text }]}>{isHovered ? 'Play' : 'Play'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -221,18 +216,15 @@ const SearchScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
   },
   header: {
     top: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
     padding: 30,
     width: '100%',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
   },
   logo: {
     width: 50,
@@ -243,16 +235,13 @@ const styles = StyleSheet.create({
     left: -50,
     fontSize: 25,
     fontWeight: 'bold',
-    color: '#333333',
   },
   rankContainer: {
-    backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 10,
     marginVertical: 20,
     width: '90%',
     alignSelf: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -267,18 +256,12 @@ const styles = StyleSheet.create({
   rankText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333333',
-  },
-  subRankText: {
-    fontSize: 14,
-    color: '#777777',
   },
   rankBadgeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   rankBadge: {
-    backgroundColor: '#FFD700',
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -289,7 +272,6 @@ const styles = StyleSheet.create({
   rankBadgeText: {
     fontSize: 30,
     fontWeight: 'bold',
-    color: '#333333',
   },
   pointsContainer: {
     alignItems: 'flex-start',
@@ -297,90 +279,20 @@ const styles = StyleSheet.create({
   pointsText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333333',
   },
   rankDescription: {
     fontSize: 16,
-    color: '#333333',
     marginTop: 5,
   },
   viewLeaderboard: {
     fontSize: 14,
-    color: '#FFD700',
     marginTop: 5,
     textDecorationLine: 'underline',
   },
-  leaderboardContainer: {
-    paddingHorizontal: 10,
-  },
-  leaderboardItem: {
-    flexDirection: 'row', // Changed back to 'row'
-    justifyContent: 'space-between',
-    alignItems: 'center', // Center align the content horizontally
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#DDD',
-  },
-  leaderboardRank: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  leaderboardName: {
-    fontSize: 16,
-    marginTop: 5, // Add some space above the name
-  },
-  leaderboardScore: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  leaderboardModalContent: {
-    padding: 30,
-    borderRadius: 10,
-    width: '80%',
-    textAlign: 'center',
-    justifyContent: 'center',
-    alignContent: 'center',
-    alignItems: 'left',
-    backgroundColor: '#FFFFFF',
-  },
-  leaderboardTitle: {
-    alignItems: 'center',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  crownImage: {
-    width: 24,
-    height: 24,
-    marginRight: 10,
-  },
-  crownImageSmall: {
-    width: 18,
-    height: 18,
-    marginRight: 5,
-  },
-  closeButton: {
-    backgroundColor: '#E0C55B',
-    padding: 10,
-    borderRadius: 5,
-    alignItems: 'center',
-    width: 80,
-    marginTop: 20,
-  },
-  closeButtonText: {
-    color: 'black',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  refreshIcon: {
-    padding: 5,
-  },
   gameContainer: {
-    backgroundColor: '#FFFFFF',
     padding: 10,
     borderRadius: 10,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -399,16 +311,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 5,
-    textAlign: 'center',
   },
   description: {
     fontSize: 14,
     textAlign: 'center',
-    color: '#333',
     marginBottom: 10,
   },
   playButton: {
-    backgroundColor: '#E0C55B',
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
@@ -419,12 +328,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#C0A346',
   },
   playButtonText: {
-    color: 'black',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  playButtonTextHover: {
-    color: '#FFF',
   },
   modalOverlay: {
     flex: 1,
@@ -436,28 +341,22 @@ const styles = StyleSheet.create({
     padding: 50,
     borderRadius: 10,
     width: '80%',
-    textAlign: 'center',
     justifyContent: 'center',
-    alignContent: 'center',
     alignItems: 'center',
   },
   modalText1: {
-    backgroundColor: '#E0C55B',
     padding: 20,
     width: 200,
     borderRadius: 50,
     fontSize: 18,
     margin: 20,
-    color: '#000',
   },
   modalText2: {
-    backgroundColor: '#545151',
     padding: 20,
     width: 200,
     borderRadius: 50,
     fontSize: 18,
     margin: 20,
-    color: '#fff',
   },
   settingOption: {
     flexDirection: 'row',

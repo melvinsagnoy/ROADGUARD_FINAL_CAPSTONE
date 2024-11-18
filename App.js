@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
-import { Provider as PaperProvider, DefaultTheme, DarkTheme } from 'react-native-paper';
+import { Provider as PaperProvider, DefaultTheme } from 'react-native-paper';
 import AuthNavigator from './navigation/AuthNavigator';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
@@ -8,9 +7,6 @@ import * as Notifications from 'expo-notifications';
 import axios from 'axios';
 
 const App = () => {
-  const colorScheme = useColorScheme();
-  const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
-
   useEffect(() => {
     requestNotificationPermissions();
     registerBackgroundFetchAsync();
@@ -88,7 +84,7 @@ const App = () => {
   }
 
   return (
-    <PaperProvider theme={theme}>
+    <PaperProvider theme={DefaultTheme}>
       <AuthNavigator />
     </PaperProvider>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, useColorScheme } from 'react-native';
 import ReportIssueScreen from './privacy_security/ReportIssueScreen';
 import CombinedModal from './CombinedModal';
 import NotificationChannelsScreen from './privacy_security/NotificationChannelsScreen'; // Import NotificationChannelsScreen
@@ -9,6 +9,37 @@ const PrivacySecurityScreen = ({ navigation }) => {
   const [notificationModalVisible, setNotificationModalVisible] = useState(false);
   const [modalType, setModalType] = useState('');
   const [userEmail, setUserEmail] = useState('');
+
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  // Theme styles
+  const theme = {
+    light: {
+      background: '#f0f3f4',
+      text: '#2a2a2a',
+      sectionTitle: '#424242',
+      optionBackground: '#FFF',
+      optionText: '#555',
+      borderColor: '#ddd',
+      backButtonBackground: '#5a98d2',
+      backButtonText: '#FFF',
+      modalBackground: 'rgba(0, 0, 0, 0.5)',
+    },
+    dark: {
+      background: '#1e1e1e',
+      text: '#e0e0e0',
+      sectionTitle: '#c0c0c0',
+      optionBackground: '#2c2c2c',
+      optionText: '#b0b0b0',
+      borderColor: '#444',
+      backButtonBackground: '#3a6da1',
+      backButtonText: '#FFF',
+      modalBackground: 'rgba(255, 255, 255, 0.1)',
+    },
+  };
+
+  const currentTheme = isDarkMode ? theme.dark : theme.light;
 
   const openModal = (type) => {
     setModalType(type);
@@ -21,61 +52,58 @@ const PrivacySecurityScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: currentTheme.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Privacy & Security</Text>
+        <Text style={[styles.title, { color: currentTheme.text }]}>Privacy & Security</Text>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile Privacy</Text>
-          <TouchableOpacity style={styles.option} onPress={() => {/* Navigate to profile privacy settings */}}>
-            <Text style={styles.optionText}>Profile Visibility</Text>
+          <Text style={[styles.sectionTitle, { color: currentTheme.sectionTitle }]}>Profile Privacy</Text>
+          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Navigate to profile privacy settings */}}>
+            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Profile Visibility</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.option} onPress={() => {/* Navigate to location sharing settings */}}>
-            <Text style={styles.optionText}>Location Sharing</Text>
+          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Navigate to location sharing settings */}}>
+            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Location Sharing</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.option} onPress={() => {/* Navigate to data collection preferences */}}>
-            <Text style={styles.optionText}>Data Collection Preferences</Text>
+          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Navigate to data collection preferences */}}>
+            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Data Collection Preferences</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Security Settings</Text>
-          <TouchableOpacity style={styles.option} onPress={() => navigation.navigate('ChangePasscode')}>
-            <Text style={styles.optionText}>Change Passcode</Text>
+          <Text style={[styles.sectionTitle, { color: currentTheme.sectionTitle }]}>Security Settings</Text>
+          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => navigation.navigate('ChangePasscode')}>
+            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Change Passcode</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.option} onPress={() => {/* Toggle two-factor authentication */}}>
-            <Text style={styles.optionText}>Two-Factor Authentication</Text>
+          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Toggle two-factor authentication */}}>
+            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Two-Factor Authentication</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.option} onPress={() => {/* Navigate to security questions */}}>
-            <Text style={styles.optionText}>Security Questions</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications & Alerts</Text>
-          <TouchableOpacity style={styles.option} onPress={() => {/* Navigate to alert preferences */}}>
-            <Text style={styles.optionText}>Alert Preferences</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.option} onPress={() => setNotificationModalVisible(true)}>
-            <Text style={styles.optionText}>Notification Channels</Text>
+          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Navigate to security questions */}}>
+            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Security Questions</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
-          <TouchableOpacity style={styles.option} onPress={() => openModal('report')}>
-            <Text style={styles.optionText}>Report Issues or Feedback</Text>
+          <Text style={[styles.sectionTitle, { color: currentTheme.sectionTitle }]}>Notifications & Alerts</Text>
+          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Navigate to alert preferences */}}>
+            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Alert Preferences</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.option} onPress={() => {/* Show contact details */}}>
-            <Text style={styles.optionText}>Contact Support</Text>
+          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => setNotificationModalVisible(true)}>
+            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Notification Channels</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>Back</Text>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: currentTheme.sectionTitle }]}>Support</Text>
+          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => openModal('report')}>
+            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Report Issues or Feedback</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Show contact details */}}>
+            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Contact Support</Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={[styles.backButton, { backgroundColor: currentTheme.backButtonBackground }]} onPress={() => navigation.goBack()}>
+          <Text style={[styles.backButtonText, { color: currentTheme.backButtonText }]}>Back</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -99,7 +127,7 @@ const PrivacySecurityScreen = ({ navigation }) => {
         transparent={true}
         onRequestClose={() => setNotificationModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { backgroundColor: currentTheme.modalBackground }]}>
           <NotificationChannelsScreen onClose={() => setNotificationModalVisible(false)} />
         </View>
       </Modal>
@@ -111,7 +139,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f0f3f4',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -119,7 +146,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2a2a2a',
     marginBottom: 20,
   },
   section: {
@@ -128,15 +154,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#424242',
     marginBottom: 10,
   },
   option: {
-    backgroundColor: '#FFF',
     padding: 15,
     borderRadius: 10,
     marginBottom: 12,
-    borderColor: '#ddd',
     borderWidth: 1,
     shadowColor: '#000',
     shadowOpacity: 0.05,
@@ -145,10 +168,8 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 16,
-    color: '#555',
   },
   backButton: {
-    backgroundColor: '#5a98d2',
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 25,
@@ -156,7 +177,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   backButtonText: {
-    color: '#FFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -164,7 +184,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
 });
 

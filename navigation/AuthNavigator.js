@@ -22,8 +22,6 @@ import GameScreen from '../screens/GameScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import EditPostModal from '../screens/EditPostModal';
 import ProfileUpdateScreen from '../screens/ProfileUpdateScreen';
-import ChatListScreen from '../screens/ChatListScreen';
-import ChatScreen from '../screens/ChatScreen';
 import PostDetail from '../screens/PostDetail';
 import DrivingModeScreen from '../screens/DrivingModeScreen';
 import PrivacySecurityScreen from '../screens/PrivacySecurityScreen';
@@ -174,16 +172,6 @@ const AuthNavigator = () => {
           name="EditPostModal"
           component={EditPostModal}
           options={{ presentation: 'modal' }}
-        />
-        <Stack.Screen
-          name="ChatList"
-          component={ChatListScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="ChatScreen"
-          component={ChatScreen}
-          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="PostDetail"

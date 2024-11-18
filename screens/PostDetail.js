@@ -6,17 +6,41 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
-  TextInput
+  TextInput,
+  useColorScheme,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useTheme } from 'react-native-paper';
 import { format } from 'date-fns';
-import { ref, onValue, get, push, set, update, remove } from 'firebase/database';
+import { ref, onValue, get, push, set, update } from 'firebase/database';
 import { database, auth, firestore } from '../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
 const PostDetail = ({ route, navigation }) => {
-  const { colors } = useTheme();
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  // Define the theme styles
+  const theme = {
+    light: {
+      background: '#FFFFFF',
+      text: '#000000',
+      headerBackground: '#F5F5F5',
+      borderColor: '#DDDDDD',
+      inputBackground: '#F1F1F1',
+      placeholderTextColor: '#888888',
+    },
+    dark: {
+      background: '#1C1C1C',
+      text: '#FFFFFF',
+      headerBackground: '#2B2B2B',
+      borderColor: '#444444',
+      inputBackground: '#333333',
+      placeholderTextColor: '#AAAAAA',
+    },
+  };
+
+  const currentTheme = isDarkMode ? theme.dark : theme.light;
+
   const [post, setPost] = useState({});
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
@@ -58,131 +82,114 @@ const PostDetail = ({ route, navigation }) => {
   }, [route.params]);
 
   const submitComment = async () => {
-  if (!commentText.trim()) return;
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
-    console.error('User not logged in');
-    return;
-  }
-
-  // Generate a unique key for the new comment using push()
-  const commentRef = ref(database, `posts/${post.id}/comments`).push();
-
-  await set(commentRef, {
-    text: commentText,
-    userId: currentUser.email, // Include the email of the user
-    displayName: userData.displayName || 'Anonymous',
-    profileImage: userData.photoURL || 'https://via.placeholder.com/30',
-    createdAt: Date.now(),
-    userEmail: currentUser.email // Storing the user's email for filtering purposes
-  });
-
-  setCommentText(''); // Reset the comment input field after submission
-};
-
-const handleVote = async (postId, voteType) => {
-  setIsLoading(true); // Start loading indicator
-  const currentUser = auth.currentUser;
-
-  if (!currentUser || !currentUser.email) {
-    console.error('User email is not available.');
-    setIsLoading(false); // Stop loading
-    return;
-  }
-
-  const userEmail = currentUser.email.toLowerCase().trim();
-  const sanitizedEmail = userEmail.replace(/[.#$\/\[\]]/g, '_'); // Remove invalid characters
-
-  try {
-    // Get user data
-    const userDocRef = doc(firestore, `users/${userEmail}`);
-    const userDoc = await getDoc(userDocRef);
-    if (!userDoc.exists()) {
-      throw new Error('User does not exist in Firestore');
-    }
-    const userData = userDoc.data();
-    const displayName = userData.displayName || 'Anonymous';
-    const photoURL = userData.photoURL || 'https://via.placeholder.com/150';
-
-    // Get the post data from Firebase Realtime Database
-    const postRef = ref(database, `posts/${postId}`);
-    const postSnapshot = await get(postRef);
-    const postData = postSnapshot.val();
-    if (!postData) {
-      throw new Error('Post does not exist');
+    if (!commentText.trim()) return;
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      console.error('User not logged in');
+      return;
     }
 
-    // Destructure the current upvotes, downvotes, and voters
-    let { upvotes = 0, downvotes = 0, voters = {} } = postData;
+    const commentRef = push(ref(database, `posts/${post.id}/comments`));
 
-    // Convert voteType to match 'upvote' and 'downvote' convention
-    const newVoteType = voteType === 'upvotes' ? 'upvote' : 'downvote';
-
-    // Handle vote logic
-    if (voters[sanitizedEmail] && voters[sanitizedEmail].voteType === newVoteType) {
-      // Remove vote if the user clicks the same vote type again
-      newVoteType === 'upvote' ? upvotes-- : downvotes--;
-      delete voters[sanitizedEmail]; // Remove the voter from the list
-    } else {
-      // Add or change the vote
-      if (voters[sanitizedEmail]) {
-        // If the user is switching vote type, decrement the previous vote type
-        voters[sanitizedEmail].voteType === 'upvote' ? upvotes-- : downvotes--;
-      }
-      // Increment the new vote type
-      newVoteType === 'upvote' ? upvotes++ : downvotes++;
-
-      // Update the voter's entry
-      voters[sanitizedEmail] = {
-        voteType: newVoteType,
-        displayName,
-        email: userEmail,
-        photoURL,
-        timestamp: Date.now() // Use integer timestamp (in milliseconds)
-      };
-    }
-
-    // Update the post with new vote counts and voters
-    await update(postRef, {
-      upvotes,
-      downvotes,
-      voters
+    await set(commentRef, {
+      text: commentText,
+      userId: currentUser.email,
+      displayName: userData.displayName || 'Anonymous',
+      profileImage: userData.photoURL || 'https://via.placeholder.com/30',
+      createdAt: Date.now(),
+      userEmail: currentUser.email,
     });
 
-    // Update the local state (if needed)
-    setPost(prev => ({
-      ...prev,
-      upvotes,
-      downvotes,
-      voters
-    }));
-  } catch (error) {
-    console.error('Error handling vote:', error);
-  } finally {
-    setIsLoading(false); // End loading
-  }
-};
+    setCommentText('');
+  };
 
+  const handleVote = async (postId, voteType) => {
+    setIsLoading(true);
+    const currentUser = auth.currentUser;
 
+    if (!currentUser || !currentUser.email) {
+      console.error('User email is not available.');
+      setIsLoading(false);
+      return;
+    }
 
+    const userEmail = currentUser.email.toLowerCase().trim();
+    const sanitizedEmail = userEmail.replace(/[.#$\/\[\]]/g, '_');
+
+    try {
+      const userDocRef = doc(firestore, `users/${userEmail}`);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        throw new Error('User does not exist in Firestore');
+      }
+      const userData = userDoc.data();
+      const displayName = userData.displayName || 'Anonymous';
+      const photoURL = userData.photoURL || 'https://via.placeholder.com/150';
+
+      const postRef = ref(database, `posts/${postId}`);
+      const postSnapshot = await get(postRef);
+      const postData = postSnapshot.val();
+      if (!postData) {
+        throw new Error('Post does not exist');
+      }
+
+      let { upvotes = 0, downvotes = 0, voters = {} } = postData;
+
+      const newVoteType = voteType === 'upvotes' ? 'upvote' : 'downvote';
+
+      if (voters[sanitizedEmail] && voters[sanitizedEmail].voteType === newVoteType) {
+        newVoteType === 'upvote' ? upvotes-- : downvotes--;
+        delete voters[sanitizedEmail];
+      } else {
+        if (voters[sanitizedEmail]) {
+          voters[sanitizedEmail].voteType === 'upvote' ? upvotes-- : downvotes--;
+        }
+        newVoteType === 'upvote' ? upvotes++ : downvotes++;
+        voters[sanitizedEmail] = {
+          voteType: newVoteType,
+          displayName,
+          email: userEmail,
+          photoURL,
+          timestamp: Date.now(),
+        };
+      }
+
+      await update(postRef, {
+        upvotes,
+        downvotes,
+        voters,
+      });
+
+      setPost((prev) => ({
+        ...prev,
+        upvotes,
+        downvotes,
+        voters,
+      }));
+    } catch (error) {
+      console.error('Error handling vote:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
+    <ScrollView style={[styles.container, { backgroundColor: currentTheme.background }]}>
+      <View style={[styles.header, { backgroundColor: currentTheme.headerBackground }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={30} color={colors.text} />
+          <MaterialIcons name="arrow-back" size={30} color={currentTheme.text} />
         </TouchableOpacity>
-        <Text style={styles.headerText}>Post Details</Text>
+        <Text style={[styles.headerText, { color: currentTheme.text }]}>Post Details</Text>
       </View>
-      <View style={styles.feedItem}>
+      <View style={[styles.feedItem, { borderBottomColor: currentTheme.borderColor }]}>
         <View style={styles.feedHeader}>
           <Image source={{ uri: post.photoURL || 'https://via.placeholder.com/50' }} style={styles.profileIcon} />
           <View style={styles.feedHeaderText}>
-            <Text style={[styles.feedAuthor, { color: colors.text }]}>
+            <Text style={[styles.feedAuthor, { color: currentTheme.text }]}>
               {post.displayName || 'Unknown User'}
             </Text>
             {post.location && (
-              <Text style={[styles.feedLocation, { color: colors.text }]}>
+              <Text style={[styles.feedLocation, { color: currentTheme.text }]}>
                 Location: {`${post.location.latitude}, ${post.location.longitude}`}
               </Text>
             )}
@@ -190,35 +197,39 @@ const handleVote = async (postId, voteType) => {
         </View>
         <View style={styles.feedContent}>
           {post.imageURL && <Image source={{ uri: post.imageURL }} style={styles.feedImage} />}
-          <Text style={[styles.feedTitle, { color: colors.text }]}>{post.title || 'No title'}</Text>
-          <Text style={[styles.feedBody, { color: colors.text }]}>{post.body || 'No content available.'}</Text>
+          <Text style={[styles.feedTitle, { color: currentTheme.text }]}>{post.title || 'No title'}</Text>
+          <Text style={[styles.feedBody, { color: currentTheme.text }]}>{post.body || 'No content available.'}</Text>
           <Text style={styles.postDate}>{format(new Date(post.createdAt || Date.now()), 'PPpp')}</Text>
         </View>
       </View>
       <View style={styles.voteSection}>
         <TouchableOpacity onPress={() => handleVote(post.id, 'upvotes')} style={styles.voteButton}>
           <MaterialIcons name="thumb-up" size={24} color="blue" />
-          <Text style={styles.voteCount}>{(post.upvotes || 0).toString()}</Text>
+          <Text style={[styles.voteCount, { color: currentTheme.text }]}>{(post.upvotes || 0).toString()}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => handleVote(post.id, 'downvotes')} style={styles.voteButton}>
           <MaterialIcons name="thumb-down" size={24} color="red" />
-          <Text style={styles.voteCount}>{(post.downvotes || 0).toString()}</Text>
+          <Text style={[styles.voteCount, { color: currentTheme.text }]}>{(post.downvotes || 0).toString()}</Text>
         </TouchableOpacity>
       </View>
       {comments.map((comment, index) => (
         <View key={index} style={styles.commentItem}>
           <Image source={{ uri: comment.profileImage || 'https://via.placeholder.com/30' }} style={styles.commentProfileIcon} />
           <View style={styles.commentTextContainer}>
-            <Text style={styles.commentUserName}>{comment.displayName || 'Anonymous'}</Text>
-            <Text style={styles.commentText}>{comment.text}</Text>
-            <Text style={styles.commentDate}>{format(new Date(comment.createdAt), 'PPpp')}</Text>
+            <Text style={[styles.commentUserName, { color: currentTheme.text }]}>{comment.displayName || 'Anonymous'}</Text>
+            <Text style={[styles.commentText, { color: currentTheme.text }]}>{comment.text}</Text>
+            <Text style={[styles.commentDate, { color: currentTheme.text }]}>{format(new Date(comment.createdAt), 'PPpp')}</Text>
           </View>
         </View>
       ))}
       <View style={styles.commentInputContainer}>
         <TextInput
-          style={styles.commentInput}
+          style={[
+            styles.commentInput,
+            { backgroundColor: currentTheme.inputBackground, color: currentTheme.text },
+          ]}
           placeholder="Write a comment..."
+          placeholderTextColor={currentTheme.placeholderTextColor}
           value={commentText}
           onChangeText={setCommentText}
         />
@@ -234,15 +245,12 @@ const styles = StyleSheet.create({
   container: {
     top: 50,
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    backgroundColor: '#f5f5f5',
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
   },
   backButton: {
     marginRight: 10,
@@ -254,7 +262,6 @@ const styles = StyleSheet.create({
   feedItem: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
   },
   feedHeader: {
     flexDirection: 'row',
@@ -275,7 +282,6 @@ const styles = StyleSheet.create({
   },
   feedLocation: {
     fontSize: 14,
-    color: '#888',
   },
   feedContent: {
     marginTop: 10,
@@ -311,7 +317,6 @@ const styles = StyleSheet.create({
   voteCount: {
     marginLeft: 5,
     fontSize: 16,
-    color: '#333',
   },
   commentItem: {
     flexDirection: 'row',
@@ -337,7 +342,6 @@ const styles = StyleSheet.create({
   commentDate: {
     marginTop: 2,
     fontSize: 12,
-    color: '#888',
   },
   commentInputContainer: {
     flexDirection: 'row',
@@ -348,7 +352,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 10,
     borderRadius: 20,
-    backgroundColor: '#f1f1f1',
     marginRight: 10,
   },
   sendButton: {

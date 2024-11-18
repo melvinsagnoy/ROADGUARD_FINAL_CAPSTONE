@@ -10,6 +10,7 @@ import {
   Animated,
   Switch,
   RefreshControl,
+  useColorScheme,
   TextInput
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -35,7 +36,32 @@ const GOOGLE_API_KEY = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0';
 
 const HomeScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
   
+  const colorScheme = useColorScheme(); // Use this hook to detect system theme
+  const isDarkMode = colorScheme === 'dark';
 
+  const lightTheme = {
+    background: '#FFFFFF',
+    text: '#000000',
+    primary: '#E0C55B',
+    secondary: '#F5F5F5',
+    border: '#CCCCCC',
+    modalBackground: '#FFFFFF',
+    itemBackground: '#F5F5F5', // Lighter background for items
+  };
+
+  const darkTheme = {
+    background: '#121212',
+    text: '#E0E0E0',
+    primary: '#BB86FC',
+    secondary: '#1E1E1E',
+    border: '#444444',
+    modalBackground: '#1F1F1F',
+    itemBackground: '#1E1E1E', // Slightly lighter dark background for items
+  };
+
+
+  // Use the appropriate theme based on system preference
+  const theme = isDarkMode ? darkTheme : lightTheme;
   const apiKey = 'b2529bcc950c7e261538c1ddb942c44e';
   const { colors } = useTheme();
   const [isCreatePostModalVisible, setCreatePostModalVisible] = useState(false);
@@ -447,46 +473,42 @@ const handleDeletePost = async (postId) => {
   }
 };
   
-  const renderNewsFeed = () => {
+const renderNewsFeed = () => {
   return posts.map((post) => (
-    <View key={post.id} style={styles.feedItem}>
+    <View key={post.id} style={[styles.feedItem, { backgroundColor: theme.itemBackground }]}>
       <View style={styles.feedHeader}>
         <Image
           source={{ uri: post.photoURL || 'https://via.placeholder.com/50' }}
           style={styles.profileIcon}
         />
         <View style={styles.feedHeaderText}>
-          <Text style={[styles.feedAuthor, { color: colors.text }]}>
+          <Text style={[styles.feedAuthor, { color: theme.text }]}>
             {post.displayName}
           </Text>
           {post.location ? (
-            <Text style={styles.feedLocation}>
+            <Text style={[styles.feedLocation, { color: theme.text }]}>
               {post.address ? post.address : 'Location not available'}
             </Text>
           ) : (
-            <Text style={[styles.feedLocation, { color: colors.text }]}>
+            <Text style={[styles.feedLocation, { color: theme.text }]}>
               Location: Not available
             </Text>
           )}
         </View>
-        {user && user.email === post.id && (
-          <TouchableOpacity onPress={() => handleMenuPress(post.id)} style={styles.menuButton}>
-            <MaterialIcons name="more-vert" size={24} color={colors.text} />
-          </TouchableOpacity>
-        )}
+
       </View>
 
       <View style={styles.feedContent}>
         {post.imageURL ? (
           <Image source={{ uri: post.imageURL }} style={styles.feedImage} />
         ) : null}
-        <Text style={[styles.feedTitle, { color: colors.text }]}>
+        <Text style={[styles.feedTitle, { color: theme.text }]}>
           {post.title}
         </Text>
-        <Text style={[styles.feedBody, { color: colors.text }]}>
+        <Text style={[styles.feedBody, { color: theme.text }]}>
           {post.body}
         </Text>
-        <Text style={styles.postDate}>
+        <Text style={[styles.postDate, { color: theme.text }]}>
           {post.createdAt ? formatDate(post.createdAt) : 'Date not available'}
         </Text>
 
@@ -495,22 +517,22 @@ const handleDeletePost = async (postId) => {
             <MaterialIcons
               name="thumb-up"
               size={24}
-              color={userVotes[post.id] === 'upvotes' ? '#E0C55B' : colors.text}
+              color={userVotes[post.id] === 'upvotes' ? theme.primary : theme.text}
             />
           </TouchableOpacity>
-          <Text style={styles.voteCount}>{post.upvotes || 0}</Text>
+          <Text style={[styles.voteCount, { color: theme.text }]}>{post.upvotes || 0}</Text>
           <TouchableOpacity onPress={() => handleVote(post.id, 'downvotes')}>
             <MaterialIcons
               name="thumb-down"
               size={24}
-              color={userVotes[post.id] === 'downvotes' ? '#E0C55B' : colors.text}
+              color={userVotes[post.id] === 'downvotes' ? theme.primary : theme.text}
             />
           </TouchableOpacity>
-          <Text style={styles.voteCount}>{post.downvotes || 0}</Text>
+          <Text style={[styles.voteCount, { color: theme.text }]}>{post.downvotes || 0}</Text>
         </View>
 
         <TouchableOpacity onPress={() => openCommentModal(post.id)}>
-          <Text style={[styles.commentButton, { color: colors.primary }]}>
+          <Text style={[styles.commentButton, { color: theme.primary }]}>
             View Comments
           </Text>
         </TouchableOpacity>
@@ -518,8 +540,9 @@ const handleDeletePost = async (postId) => {
         {selectedPostId === post.id && (
           <View style={styles.commentInputContainer}>
             <TextInput
-              style={styles.commentInput}
+              style={[styles.commentInput, { color: theme.text, borderColor: theme.border }]}
               placeholder="Write a comment..."
+              placeholderTextColor={isDarkMode ? '#888888' : '#AAAAAA'}
               value={commentText}
               onChangeText={(text) => setCommentText(text)}
             />
@@ -531,8 +554,8 @@ const handleDeletePost = async (postId) => {
 
         {/* Render comments */}
         {comments[post.id] && comments[post.id]
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) // Sort by newest first
-          .slice(0, 3) // Take only the 3 newest comments
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 3)
           .map((comment, index) => (
             <View key={index} style={styles.commentItem}>
               <Image
@@ -540,9 +563,13 @@ const handleDeletePost = async (postId) => {
                 style={styles.commentProfileIcon}
               />
               <View style={styles.commentTextContainer}>
-                <Text style={styles.commentUserName}>{comment.displayName || 'Anonymous'}</Text>
-                <Text style={styles.commentText}>{comment.text}</Text>
-                <Text style={styles.commentDate}>
+                <Text style={[styles.commentUserName, { color: theme.text }]}>
+                  {comment.displayName || 'Anonymous'}
+                </Text>
+                <Text style={[styles.commentText, { color: theme.text }]}>
+                  {comment.text}
+                </Text>
+                <Text style={[styles.commentDate, { color: theme.text }]}>
                   {formatDate(comment.createdAt)}
                 </Text>
               </View>
@@ -551,21 +578,22 @@ const handleDeletePost = async (postId) => {
       </View>
 
       {dropdownMenu === post.id && (
-        <View style={styles.dropdownMenu}>
-          <TouchableOpacity 
-            onPress={() => handleEditPost(post.id, { title: post.title, body: post.body })} 
+        <View style={[styles.dropdownMenu, { backgroundColor: theme.itemBackground }]}>
+          <TouchableOpacity
+            onPress={() => handleEditPost(post.id, { title: post.title, body: post.body })}
             style={styles.dropdownItem}
           >
-            <Text style={styles.dropdownText}>Edit</Text>
+            <Text style={[styles.dropdownText, { color: theme.text }]}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => handleDeletePost(post.id)} style={styles.dropdownItem}>
-            <Text style={styles.dropdownText}>Delete</Text>
+            <Text style={[styles.dropdownText, { color: theme.text }]}>Delete</Text>
           </TouchableOpacity>
         </View>
       )}
     </View>
   ));
 };
+
 
   const animateIcon = (iconName) => {
     Animated.sequence([
@@ -601,13 +629,13 @@ const handleDeletePost = async (postId) => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-    <View style={styles.weatherHeaderContainer}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+   <View style={[styles.weatherHeaderContainer, { borderBottomColor: theme.border }]}>
     <WeatherHeader apiKey={apiKey} latitude={10.3157} longitude={123.8854} />
   </View>
     {isLoading && (
       <View style={styles.loadingOverlay}>
-        <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={theme.primary} />
       </View>
     )}
       <EditPostModal
@@ -631,23 +659,7 @@ const handleDeletePost = async (postId) => {
         postId={selectedPostId}
       />
 
-      <Modal
-        visible={isMenuModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={toggleMenuModal}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-            <TouchableOpacity onPress={handleSettings}>
-              <Text style={[styles.modalText1, { color: colors.text }]}>Settings</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleLogout}>
-              <Text style={[styles.modalText2, { color: colors.text }]}>Logout</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      
 
       <Modal
         visible={isSettingsModalVisible}
@@ -656,13 +668,13 @@ const handleDeletePost = async (postId) => {
         onRequestClose={() => setSettingsModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+        <View style={[styles.modalContent, { backgroundColor: theme.modalBackground }]}>
             <View style={styles.settingOption}>
-              <Text style={[styles.settingText, { color: colors.text }]}>Dark Mode</Text>
+              <Text style={[styles.settingText, { color: theme.text }]}>Dark Mode</Text>
               <Switch value={isDarkTheme} onValueChange={toggleTheme} />
             </View>
             <TouchableOpacity onPress={() => setSettingsModalVisible(false)}>
-              <Text style={[styles.modalText2, { color: colors.text }]}>Close</Text>
+              <Text style={[styles.modalText2, { color: theme.text }]}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -677,9 +689,9 @@ const handleDeletePost = async (postId) => {
 
       <View style={styles.headerHead}>
         <Image source={require('../assets/icon.png')} style={styles.headerIcon} />
-        <Text style={[styles.headerTitle, { color: colors.text }]}>RoadGuard</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>RoadGuard</Text>
         <TouchableOpacity style={styles.menuIconContainer} onPress={toggleMenuModal}>
-          <MaterialIcons name="menu" size={30} color={colors.text} />
+          <MaterialIcons name="menu" size={30} color={theme.text} />
         </TouchableOpacity>
 
         {user && (
@@ -694,12 +706,12 @@ const handleDeletePost = async (postId) => {
       </View>
 
       <ScrollView
-        style={[styles.newsFeedContainer, { backgroundColor: colors.background }]}
+        style={[styles.newsFeedContainer, { backgroundColor: theme.background }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary]}
+            colors={[theme.primary]}
           />
         }
       >

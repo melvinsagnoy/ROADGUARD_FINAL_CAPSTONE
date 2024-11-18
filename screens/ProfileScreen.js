@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Image, Modal, FlatList, Alert, ScrollView  } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Image, Modal, FlatList, Alert, ScrollView, useColorScheme } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { auth, firestore, storage , database} from '../firebaseConfig';
@@ -13,6 +13,32 @@ import ClaimingFormModal from './ClaimingFormModal';
 
 
 const ProfileScreen = ({ navigation }) => {
+  // Light and dark theme definitions
+// Define light and dark themes
+const lightTheme = {
+  background: '#F5F5F5',
+  text: '#000',
+  cardBackground: '#FFD700',
+  buttonBackground: '#FFF',
+  inputBackground: '#FFF',
+  modalBackground: '#FFF',
+  closeButtonBackground: '#FF6347',
+  redeemButtonBackground: '#E0C55B',
+};
+
+const darkTheme = {
+  background: '#121212',
+  text: '#E0E0E0',
+  cardBackground: '#333',
+  buttonBackground: '#444',
+  inputBackground: '#333',
+  modalBackground: '#1F1F1F',
+  closeButtonBackground: '#FF6347',
+  redeemButtonBackground: '#BB86FC',
+};
+const colorScheme = useColorScheme();
+const isDarkMode = colorScheme === 'dark';
+const theme = isDarkMode ? darkTheme : lightTheme;
  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -398,9 +424,9 @@ if (newPhoneNumber.trim()) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+      <ActivityIndicator size="large" color={theme.text} />
+    </View>
     );
   }
 
@@ -409,218 +435,168 @@ if (newPhoneNumber.trim()) {
   }
 
   return (
-    <View style={styles.container}>
-      
-      <View style={styles.profileCard}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Profile Card */}
+      <View style={[styles.profileCard, { backgroundColor: theme.cardBackground }]}>
         <TouchableOpacity onPress={pickImage}>
           <Image source={{ uri: newProfileImageUri || imageUri }} style={styles.profileImage} />
         </TouchableOpacity>
-        <Text style={styles.name}>{user.displayName || 'No Name'}</Text>
-        <Text style={styles.email}>{user.email}</Text>
-        <Text style={styles.phoneNumber}>{phoneNumber}</Text>
-        <Text style={styles.points}>{points} points</Text>
+        <Text style={[styles.name, { color: theme.text }]}>{user.displayName || 'No Name'}</Text>
+        <Text style={[styles.email, { color: theme.text }]}>{user.email}</Text>
+        <Text style={[styles.phoneNumber, { color: theme.text }]}>{phoneNumber}</Text>
+        <Text style={[styles.points, { color: theme.text }]}>{points} points</Text>
       </View>
+  
+      {/* Button Row */}
       <View style={styles.buttonRow}>
-         <TouchableOpacity style={styles.button} onPress={handleRedeemRewards}>
-          <Text style={styles.buttonText} color="black">Redeem Rewards</Text>
+        <TouchableOpacity style={[styles.button, { backgroundColor: theme.buttonBackground }]} onPress={handleRedeemRewards}>
+          <Text style={[styles.buttonText, { color: theme.text }]}>Redeem Rewards</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={() => handleNavigation('SubscriptionScreen')}>
-          <Text style={styles.buttonText} color="black">Subscribe</Text>
+        <TouchableOpacity style={[styles.button, { backgroundColor: theme.buttonBackground }]} onPress={() => handleNavigation('SubscriptionScreen')}>
+          <Text style={[styles.buttonText, { color: theme.text }]}>Subscribe</Text>
         </TouchableOpacity>
       </View>
+  
+      {/* Options */}
       <View style={styles.options}>
         <TouchableOpacity style={styles.option} onPress={() => setEditMode(true)}>
-          <FontAwesome name="user" size={24} color="black" />
-          <Text style={styles.optionText}>Edit Profile</Text>
+          <FontAwesome name="user" size={24} color={theme.text} />
+          <Text style={[styles.optionText, { color: theme.text }]}>Edit Profile</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.option} onPress={fetchLeaderboardData}>
-          <FontAwesome name="star" size={24} color="black" />
-          <Text style={styles.optionText}>Leaderboards</Text>
+          <FontAwesome name="star" size={24} color={theme.text} />
+          <Text style={[styles.optionText, { color: theme.text }]}>Leaderboards</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.option} onPress={fetchRedeemedRewards}>
-        <FontAwesome name="gift" size={24} color="#000" style={styles.icon} />
-        <Text style={styles.optionText}>View Redeemed Rewards</Text>
-      </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.option}
-          onPress={() => navigation.navigate('ChatList')} // Use 'ChatList' not 'ChatListScreen'
-        >
-          <FontAwesome name="comments" size={24} color="black" />
-          <Text style={styles.optionText}>Chats</Text>
+          <FontAwesome name="gift" size={24} color={theme.text} />
+          <Text style={[styles.optionText, { color: theme.text }]}>View Redeemed Rewards</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-  style={styles.option}
-  onPress={() => navigation.navigate('PrivacySecurityScreen')}
->
-  <FontAwesome name="shield" size={24} color="black" />
-  <Text style={styles.optionText}>Privacy & Security</Text>
-</TouchableOpacity>
-        <TouchableOpacity
-          style={styles.option}
-          onPress={handleLogout}
-        >
-          <FontAwesome name="sign-out" size={24} color="black" />
-          <Text style={styles.optionText}>Log out</Text>
+        <TouchableOpacity style={styles.option} onPress={() => navigation.navigate('PrivacySecurityScreen')}>
+          <FontAwesome name="shield" size={24} color={theme.text} />
+          <Text style={[styles.optionText, { color: theme.text }]}>Privacy & Security</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.option} onPress={handleLogout}>
+          <FontAwesome name="sign-out" size={24} color={theme.text} />
+          <Text style={[styles.optionText, { color: theme.text }]}>Log out</Text>
         </TouchableOpacity>
       </View>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={leaderboardVisible}
-        onRequestClose={() => setLeaderboardVisible(false)}
-      >
+  
+      {/* Leaderboard Modal */}
+      <Modal animationType="slide" transparent={true} visible={leaderboardVisible} onRequestClose={() => setLeaderboardVisible(false)}>
         <View style={styles.modalContainer}>
-          <View style={styles.leaderboardModal}>
-            <Text style={styles.modalTitle}>Leaderboard</Text>
+          <View style={[styles.leaderboardModal, { backgroundColor: theme.modalBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Leaderboard</Text>
             <FlatList
               data={leaderboardData}
               keyExtractor={(item, index) => index.toString()}
               renderItem={({ item, index }) => (
                 <View style={styles.leaderboardItem}>
-                  <Text style={styles.rankText}>{index + 1}</Text>
-                  <Text style={styles.leaderboardText}>{item.displayName}</Text>
-                  <Text style={styles.leaderboardText}>{item.score}</Text>
+                  <Text style={[styles.rankText, { color: theme.text }]}>{index + 1}</Text>
+                  <Text style={[styles.leaderboardText, { color: theme.text }]}>{item.displayName}</Text>
+                  <Text style={[styles.leaderboardText, { color: theme.text }]}>{item.score}</Text>
                 </View>
               )}
             />
-            <TouchableOpacity style={styles.closeButton} onPress={() => setLeaderboardVisible(false)}>
+            <TouchableOpacity style={[styles.closeButton, { backgroundColor: theme.closeButtonBackground }]} onPress={() => setLeaderboardVisible(false)}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-
-      <Modal
-  animationType="slide"
-  transparent={true}
-  visible={editMode}
-  onRequestClose={() => setEditMode(false)}
->
-  <View style={styles.editProfileContainer}>
-    <TextInput
-      style={styles.input}
-      placeholder="Enter new display name"
-      value={newName}
-      onChangeText={setNewName}
-    />
-    <TextInput
-  style={styles.input}
-  placeholder="New Phone Number"
-  value={newPhoneNumber}
-  onChangeText={setNewPhoneNumber}
-/>
-    <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
-      <Text style={styles.imageButtonText}>Change Profile Image</Text>
-    </TouchableOpacity>
-    <TouchableOpacity style={styles.saveButton} onPress={saveProfileChanges}>
-      <Text style={styles.saveButtonText}>Save</Text>
-    </TouchableOpacity>
-    <TouchableOpacity
-      style={[
-        styles.cancelButton,
-        { opacity: needsNameUpdate || needsImageUpdate ? 0.5 : 1 } // Adjust opacity based on profile completion
-      ]}
-      onPress={() => {
-        if (!(needsNameUpdate || needsImageUpdate)) {
-          setEditMode(false);
-        }
-      }}
-      disabled={needsNameUpdate || needsImageUpdate} // Disable button based on profile completion
-    >
-      <Text style={styles.cancelButtonText}>Cancel</Text>
-    </TouchableOpacity>
-  </View>
-</Modal>
-
-<Modal
-  animationType="slide"
-  transparent={true}
-  visible={rewardsModalVisible}
-  onRequestClose={() => setRewardsModalVisible(false)}
->
-  <View style={styles.modalContainer}>
-    <View style={styles.rewardModal}>
-      <Text style={styles.modalTitle}>Available Rewards</Text>
-      <Text style={styles.pointsText}>Your Points: {points}</Text>
-      <ScrollView
-        contentContainerStyle={styles.rewardsGrid}
-        showsVerticalScrollIndicator={false} // Optional: hide vertical scrollbar
-      >
-        {rewards.map((item, index) => (
-          <View
-            key={item.id}
-            style={[
-              styles.rewardItem,
-              { marginRight: index % 2 === 0 ? 10 : 0 }
-            ]}
+  
+      {/* Edit Profile Modal */}
+      <Modal animationType="slide" transparent={true} visible={editMode} onRequestClose={() => setEditMode(false)}>
+        <View style={styles.editProfileContainer}>
+          <TextInput
+            style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+            placeholder="Enter new display name"
+            placeholderTextColor={isDarkMode ? '#888' : '#aaa'}
+            value={newName}
+            onChangeText={setNewName}
+          />
+          <TextInput
+            style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text }]}
+            placeholder="New Phone Number"
+            placeholderTextColor={isDarkMode ? '#888' : '#aaa'}
+            value={newPhoneNumber}
+            onChangeText={setNewPhoneNumber}
+          />
+          <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
+            <Text style={styles.imageButtonText}>Change Profile Image</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.saveButton} onPress={saveProfileChanges}>
+            <Text style={styles.saveButtonText}>Save</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.cancelButton, { backgroundColor: theme.closeButtonBackground }]}
+            onPress={() => setEditMode(false)}
           >
-            <Image source={{ uri: item.imageUrl }} style={styles.rewardImage} />
-            <View style={styles.rewardDetails}>
-              <Text style={styles.rewardText}>{item.rewardName}</Text>
-              <Text style={styles.rewardPoints}>{item.pointsRequired} points</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.redeemButton}
-              onPress={() => handleRedeem(item.id)}
-            >
-              <Text style={styles.redeemButtonText}>Redeem</Text>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+  
+      {/* Rewards Modal */}
+      <Modal animationType="slide" transparent={true} visible={rewardsModalVisible} onRequestClose={() => setRewardsModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          <View style={[styles.rewardModal, { backgroundColor: theme.modalBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Available Rewards</Text>
+            <Text style={[styles.pointsText, { color: theme.text }]}>Your Points: {points}</Text>
+            <ScrollView contentContainerStyle={styles.rewardsGrid}>
+              {rewards.map((item, index) => (
+                <View key={item.id} style={styles.rewardItem}>
+                  <Image source={{ uri: item.imageUrl }} style={styles.rewardImage} />
+                  <View style={styles.rewardDetails}>
+                    <Text style={[styles.rewardText, { color: theme.text }]}>{item.rewardName}</Text>
+                    <Text style={[styles.rewardPoints, { color: theme.text }]}>{item.pointsRequired} points</Text>
+                  </View>
+                  <TouchableOpacity style={[styles.redeemButton, { backgroundColor: theme.redeemButtonBackground }]} onPress={() => handleRedeem(item.id)}>
+                    <Text style={styles.redeemButtonText}>Redeem</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={[styles.closeButton, { backgroundColor: theme.closeButtonBackground }]} onPress={() => setRewardsModalVisible(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
-        ))}
-      </ScrollView>
-      <TouchableOpacity style={styles.closeButton} onPress={() => setRewardsModalVisible(false)}>
-        <Text style={styles.closeButtonText}>Close</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-</Modal>
-
-      <Modal
-  animationType="slide"
-  transparent={true}
-  visible={redeemedRewardsModalVisible}
-  onRequestClose={() => setRedeemedRewardsModalVisible(false)}
->
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-    <View style={{ width: '90%', backgroundColor: '#fff', borderRadius: 10, padding: 20, elevation: 5 }}>
-      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>Redeemed Rewards</Text>
-      <FlatList
-        data={redeemedRewards}
-        keyExtractor={(item) => item.timestamp.toString()}
-        renderItem={({ item }) => (
-          <View style={{ marginBottom: 15, padding: 15, backgroundColor: '#f9f9f9', borderRadius: 10, borderWidth: 1, borderColor: '#ddd' }}>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>Reward Claimed By:</Text>
-            <Text style={{ fontSize: 16, marginBottom: 5 }}>{item.fullName}</Text>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>Address:</Text>
-            <Text style={{ fontSize: 16, marginBottom: 5 }}>{item.address}</Text>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>Phone Number:</Text>
-            <Text style={{ fontSize: 16, marginBottom: 5 }}>{item.phoneNumber}</Text>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>Status:</Text>
-            <Text style={{ fontSize: 16, marginBottom: 5 }}>{item.status}</Text>
-            <Text style={{ fontSize: 16, fontWeight: 'bold' }}>Timestamp:</Text>
-            <Text style={{ fontSize: 16 }}>{new Date(item.timestamp).toLocaleString()}</Text>
+        </View>
+      </Modal>
+  
+      {/* Redeemed Rewards Modal */}
+      <Modal animationType="slide" transparent={true} visible={redeemedRewardsModalVisible} onRequestClose={() => setRedeemedRewardsModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          <View style={[styles.rewardModal, { backgroundColor: theme.modalBackground }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Redeemed Rewards</Text>
+            <FlatList
+              data={redeemedRewards}
+              keyExtractor={(item) => item.timestamp.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.redeemedRewardItem}>
+                  <Text style={[styles.redeemedRewardText, { color: theme.text }]}>{item.fullName}</Text>
+                  <Text style={[styles.redeemedRewardText, { color: theme.text }]}>{item.address}</Text>
+                  <Text style={[styles.redeemedRewardText, { color: theme.text }]}>{item.phoneNumber}</Text>
+                  <Text style={[styles.redeemedRewardText, { color: theme.text }]}>{item.status}</Text>
+                  <Text style={[styles.redeemedRewardText, { color: theme.text }]}>{new Date(item.timestamp).toLocaleString()}</Text>
+                </View>
+              )}
+            />
+            <TouchableOpacity style={[styles.closeButton, { backgroundColor: theme.closeButtonBackground }]} onPress={() => setRedeemedRewardsModalVisible(false)}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
           </View>
-        )}
-      />
-      <TouchableOpacity
-        style={{ marginTop: 15, backgroundColor: 'red', padding: 10, borderRadius: 5, alignItems: 'center' }}
-        onPress={() => setRedeemedRewardsModalVisible(false)}
-      >
-        <Text style={{ color: '#fff', fontSize: 16 }}>Close</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-</Modal>
-
+        </View>
+      </Modal>
+  
+      {/* Claiming Form Modal */}
       <ClaimingFormModal
-  visible={claimingFormModalVisible}
-  onClose={closeClaimingFormModal}
-  reward={selectedReward} // Pass the selected reward
-  onClaim={handleClaimReward} // Pass the function to handle claiming the reward
-/>
-
-
+        visible={claimingFormModalVisible}
+        onClose={closeClaimingFormModal}
+        reward={selectedReward}
+        onClaim={handleClaimReward}
+      />
+  
+      {/* Navigation Bar */}
       <NavBar navigation={navigation} isProfileComplete={isProfileComplete} />
     </View>
   );

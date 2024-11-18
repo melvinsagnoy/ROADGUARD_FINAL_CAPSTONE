@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Platform, useColorScheme } from 'react-native';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as Notifications from 'expo-notifications';
@@ -10,7 +10,27 @@ const WeatherHeader = ({ apiKey, latitude, longitude }) => {
   const [iconCode, setIconCode] = useState('');
   const [location, setLocation] = useState('');
 
-  const { width } = Dimensions.get('window'); // Get screen width for responsive design
+  const { width } = Dimensions.get('window');
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  // Define the themes
+  const theme = {
+    light: {
+      backgroundColor: '#fff',
+      textColor: '#333',
+      conditionColor: '#4A90E2',
+      locationColor: '#888',
+    },
+    dark: {
+      backgroundColor: '#1c1c1c',
+      textColor: '#e0e0e0',
+      conditionColor: '#80c7ff',
+      locationColor: '#bbbbbb',
+    },
+  };
+
+  const currentTheme = isDarkMode ? theme.dark : theme.light;
 
   useEffect(() => {
     fetchWeather();
@@ -29,7 +49,6 @@ const WeatherHeader = ({ apiKey, latitude, longitude }) => {
       setIconCode(icon);
       setLocation(name);
 
-      // Send weather notification (optional)
       sendWeatherNotification(name, temp, main);
     } catch (error) {
       console.error('Error fetching weather data:', error);
@@ -41,15 +60,14 @@ const WeatherHeader = ({ apiKey, latitude, longitude }) => {
       content: {
         title: "Weather Update 🌤",
         body: `The current temperature in ${name} is ${Math.round(temp)}°C with ${main}.`,
-        data: { data: 'goes here' },
       },
-      trigger: null, // shows the notification immediately
+      trigger: null,
     });
   };
 
   const getWeatherIcon = (code) => {
     const iconName = iconCodeMapping(code);
-    return <Icon name={iconName} size={width < 350 ? 40 : 60} color="#4A90E2" style={styles.iconShadow} />;
+    return <Icon name={iconName} size={width < 350 ? 40 : 60} color={currentTheme.conditionColor} style={styles.iconShadow} />;
   };
 
   const iconCodeMapping = (code) => {
@@ -72,18 +90,18 @@ const WeatherHeader = ({ apiKey, latitude, longitude }) => {
       case '13n': return 'weather-snowy-heavy';
       case '50d':
       case '50n': return 'weather-fog';
-      default: return 'weather-sunny'; // Default icon if no match
+      default: return 'weather-sunny';
     }
   };
 
   return (
-    <View style={[styles.weatherCard, { width: width - 50 }]}>
+    <View style={[styles.weatherCard, { backgroundColor: currentTheme.backgroundColor, width: width - 50 }]}>
       <View style={styles.weatherContent}>
         {getWeatherIcon(iconCode)}
         <View style={styles.textContainer}>
-          <Text style={[styles.temperatureText, { fontSize: width < 320 ? 32 : 29 }]}>{temperature}</Text>
-          <Text style={[styles.conditionText, { fontSize: width < 350 ? 14 : 15 }]}>{condition}</Text>
-          <Text style={[styles.locationText, { fontSize: width < 350 ? 12 : 14 }]}>{location}</Text>
+          <Text style={[styles.temperatureText, { fontSize: width < 320 ? 32 : 29, color: currentTheme.textColor }]}>{temperature}</Text>
+          <Text style={[styles.conditionText, { fontSize: width < 350 ? 14 : 15, color: currentTheme.conditionColor }]}>{condition}</Text>
+          <Text style={[styles.locationText, { fontSize: width < 350 ? 12 : 14, color: currentTheme.locationColor }]}>{location}</Text>
         </View>
       </View>
     </View>
@@ -92,13 +110,12 @@ const WeatherHeader = ({ apiKey, latitude, longitude }) => {
 
 const styles = StyleSheet.create({
   weatherCard: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 10,
     marginHorizontal: 10,
     marginVertical: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height:2 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
@@ -114,16 +131,13 @@ const styles = StyleSheet.create({
   temperatureText: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
   },
   conditionText: {
     fontSize: 14,
-    color: '#4A90E2',
     marginTop: 3,
   },
   locationText: {
     fontSize: 12,
-    color: '#888',
     marginTop: 2,
   },
   iconShadow: {
@@ -131,7 +145,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
-    elevation: Platform.OS === 'android' ? 4 : 0, // Slight elevation on Android
+    elevation: Platform.OS === 'android' ? 4 : 0,
   },
 });
 
