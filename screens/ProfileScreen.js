@@ -6,11 +6,98 @@ import { auth, firestore, storage , database} from '../firebaseConfig';
 import { doc, getDoc, updateDoc, setDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NavBar from './NavBar';
-import { ref as dbRef, get, onValue } from 'firebase/database';  // For Realtime Database
+import { ref as dbRef, get, onValue, push } from 'firebase/database';  // For Realtime Database
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';  // For Storage
 import ClaimingFormModal from './ClaimingFormModal'; 
 import { useFonts } from 'expo-font';
 
+// Chat modal component
+const ChatModal = ({ visible, onClose, claimId }) => {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+
+  // Fetch messages for the specific claim
+  useEffect(() => {
+    if (claimId) {
+      const chatRef = dbRef(database, `claim_reward/${claimId}/chat`);
+      onValue(chatRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const chatMessages = Object.values(snapshot.val());
+          setMessages(chatMessages);
+        } else {
+          setMessages([]);
+        }
+      });
+    }
+  }, [claimId]);
+
+  // Send a message
+  const sendMessage = async () => {
+    if (!newMessage.trim()) {
+      Alert.alert('Error', 'Message cannot be empty.');
+      return;
+    }
+
+    try {
+      const chatRef = dbRef(database, `claim_reward/${claimId}/chat`);
+      const messageData = {
+        sender: auth.currentUser?.email || 'Anonymous',
+        text: newMessage,
+        timestamp: Date.now(),
+      };
+      await push(chatRef, messageData);
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
+
+  return (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.chatModal}>
+          <Text style={styles.modalTitle}>Chat with Admin</Text>
+          <FlatList
+            data={messages}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={({ item }) => (
+              <View style={styles.chatMessage}>
+                <Text style={styles.chatSender}>{item.sender}</Text>
+                <Text style={styles.chatText}>{item.text}</Text>
+                <Text style={styles.chatTimestamp}>
+                  {new Date(item.timestamp).toLocaleTimeString()}
+                </Text>
+              </View>
+            )}
+            style={styles.chatList}
+          />
+          <View style={styles.chatInputContainer}>
+            <TextInput
+              style={styles.chatInput}
+              placeholder="Type a message..."
+              value={newMessage}
+              onChangeText={setNewMessage}
+            />
+            <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
+              <FontAwesome name="send" size={20} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={onClose}
+          >
+            <Text style={styles.closeButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 const ProfileScreen = ({ navigation }) => {
   // Light and dark theme definitions
@@ -63,6 +150,8 @@ const theme = isDarkMode ? darkTheme : lightTheme;
   const [selectedReward, setSelectedReward] = useState(null); // State to store the selected reward
   const [redeemedRewards, setRedeemedRewards] = useState([]);
 const [redeemedRewardsModalVisible, setRedeemedRewardsModalVisible] = useState(false);
+const [chatModalVisible, setChatModalVisible] = useState(false);
+const [selectedClaimId, setSelectedClaimId] = useState(null);
   
   
 
@@ -426,6 +515,11 @@ if (newPhoneNumber.trim()) {
   }
 };
 
+const openChatModal = (claimId) => {
+  setSelectedClaimId(claimId);
+  setChatModalVisible(true);
+};
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
@@ -567,30 +661,56 @@ if (newPhoneNumber.trim()) {
         </View>
       </Modal>
   
-      {/* Redeemed Rewards Modal */}
-      <Modal animationType="slide" transparent={true} visible={redeemedRewardsModalVisible} onRequestClose={() => setRedeemedRewardsModalVisible(false)}>
-        <View style={styles.modalContainer}>
-          <View style={[styles.rewardModal, { backgroundColor: theme.modalBackground }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Redeemed Rewards</Text>
-            <FlatList
-              data={redeemedRewards}
-              keyExtractor={(item) => item.timestamp.toString()}
-              renderItem={({ item }) => (
-                <View style={styles.redeemedRewardItem}>
-                  <Text style={[styles.redeemedRewardText, { color: theme.text }]}>{item.fullName}</Text>
-                  <Text style={[styles.redeemedRewardText, { color: theme.text }]}>{item.address}</Text>
-                  <Text style={[styles.redeemedRewardText, { color: theme.text }]}>{item.phoneNumber}</Text>
-                  <Text style={[styles.redeemedRewardText, { color: theme.text }]}>{item.status}</Text>
-                  <Text style={[styles.redeemedRewardText, { color: theme.text }]}>{new Date(item.timestamp).toLocaleString()}</Text>
-                </View>
-              )}
-            />
-            <TouchableOpacity style={[styles.closeButton, { backgroundColor: theme.closeButtonBackground }]} onPress={() => setRedeemedRewardsModalVisible(false)}>
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <Modal
+  animationType="slide"
+  transparent={true}
+  visible={redeemedRewardsModalVisible}
+  onRequestClose={() => setRedeemedRewardsModalVisible(false)}
+>
+  <View style={styles.modalContainer}>
+    <View style={styles.rewardModal}>
+      <Text style={styles.modalTitle}>Redeemed Rewards</Text>
+      {redeemedRewards.length > 0 ? (
+        <FlatList
+          data={redeemedRewards}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.redeemedRewardItem}>
+              <Text style={styles.redeemedRewardText}>
+                <Text style={{ fontWeight: 'bold' }}>Name:</Text> {item.fullName}
+              </Text>
+              <Text style={styles.redeemedRewardText}>
+                <Text style={{ fontWeight: 'bold' }}>Reward:</Text> {item.rewardName}
+              </Text>
+              <Text style={styles.redeemedRewardText}>
+                <Text style={{ fontWeight: 'bold' }}>Status:</Text> {item.status}
+              </Text>
+              <Text style={styles.redeemedRewardText}>
+                <Text style={{ fontWeight: 'bold' }}>Redeemed At:</Text> {new Date(item.timestamp).toLocaleString()}
+              </Text>
+              <TouchableOpacity
+                  style={styles.chatIcon}
+                  onPress={() => openChatModal(item.id)}
+                >
+                  <FontAwesome name="comment" size={24} color="#007AFF" />
+                  <Text style={styles.chatIconText}>Chat</Text>
+                </TouchableOpacity>
+            </View>
+            
+          )}
+        />
+      ) : (
+        <Text style={styles.modalText}>No redeemed rewards found.</Text>
+      )}
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={() => setRedeemedRewardsModalVisible(false)}
+      >
+        <Text style={styles.closeButtonText}>Close</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
   
       {/* Claiming Form Modal */}
       <ClaimingFormModal
@@ -600,6 +720,13 @@ if (newPhoneNumber.trim()) {
         onClaim={handleClaimReward}
       />
   
+  {/* Chat Modal */}
+  <ChatModal
+        visible={chatModalVisible}
+        onClose={() => setChatModalVisible(false)}
+        claimId={selectedClaimId}
+      />
+
       {/* Navigation Bar */}
       <NavBar navigation={navigation} isProfileComplete={isProfileComplete} />
     </View>
@@ -919,6 +1046,27 @@ sendMessageButton: {
     color: '#000',
     fontSize: 16,
   },
+  redeemedRewardItem: {
+    backgroundColor: '#f9f9f9',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  redeemedRewardText: {
+    fontSize: 16,
+    marginBottom: 5,
+    fontFamily: 'Poppins-Regular',
+  },
+  modalText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: 'Poppins-Regular',
+  },
   closeButton: {
     marginTop: 20,
     padding: 10,
@@ -928,6 +1076,69 @@ sendMessageButton: {
   buttonText: {
     fontSize: 16,
     color: '#000',
+  },
+  chatModal: {
+    backgroundColor: '#FFF',
+    padding: 20,
+    borderRadius: 10,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  chatList: {
+    flexGrow: 1,
+    marginVertical: 10,
+  },
+  chatMessage: {
+    padding: 10,
+    marginBottom: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+  },
+  chatSender: {
+    fontWeight: 'bold',
+  },
+  chatText: {
+    marginVertical: 5,
+  },
+  chatTimestamp: {
+    fontSize: 12,
+    color: '#888',
+  },
+  chatInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chatInput: {
+    flex: 1,
+    borderColor: '#CCC',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginRight: 10,
+  },
+  sendButton: {
+    backgroundColor: '#007AFF',
+    padding: 10,
+    borderRadius: 8,
+  },
+  chatIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  chatIconText: {
+    marginLeft: 5,
+    color: '#007AFF',
+  },
+  closeButton: {
+    marginTop: 20,
+    backgroundColor: '#FF6347',
+    padding: 10,
+    borderRadius: 8,
+  },
+  closeButtonText: {
+    color: '#FFF',
+    textAlign: 'center',
   },
 });
 

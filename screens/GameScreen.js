@@ -8,10 +8,7 @@ import { auth, firestore } from '../firebaseConfig';
 import { doc, updateDoc, arrayUnion, setDoc, getDoc } from 'firebase/firestore';
 import { useFonts } from 'expo-font';
 
-const [fontsLoaded] = useFonts({
-  'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
-  'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
-});
+
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,6 +28,10 @@ const getRandomXPosition = () => {
 };
 
 const RoadFighterGame = () => {
+  const [fontsLoaded] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
   const [carPosition, setCarPosition] = useState({ x: width / 2 - 25, y: height - 120 });
   const [obstacles, setObstacles] = useState([
     { id: 1, position: { x: getRandomXPosition(), y: 0 }, size: { width: 50, height: 100 }, image: getRandomObstacleImage() },
@@ -83,6 +84,11 @@ const RoadFighterGame = () => {
       });
     });
 
+
+    
+
+
+    
     const gameLoop = setInterval(() => {
       if (!isGameOver) {
         Matter.Engine.update(engine, 1000 / 60);

@@ -135,21 +135,21 @@ const AddScreen = ({ navigation }) => {
   const fetchPostsWithPins = async () => {
     const db = getDatabase();
     const postsRef = ref(db, 'posts');
-
+  
     onValue(postsRef, async (snapshot) => {
       const posts = snapshot.val();
       if (!posts) return;
-
+  
       const postsArray = Object.keys(posts).map(key => ({ id: key, ...posts[key] }));
-      const filteredPosts = postsArray.filter(post => post.upvotes === 2);
-
+      const filteredPosts = postsArray.filter(post => post.upvotes >= 2); // Upvotes 2 or more
+  
       const fetchLocations = filteredPosts.map(async (post) => {
         const locationRef = ref(db, `posts/${post.id}/location`);
         const locationSnapshot = await get(locationRef);
         const locationData = locationSnapshot.val();
         return { ...post, location: locationData };
       });
-
+  
       try {
         const pinnedPosts = await Promise.all(fetchLocations);
         setPostsWithPins(pinnedPosts);

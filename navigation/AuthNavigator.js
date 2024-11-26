@@ -8,6 +8,7 @@ import ChatbotModal from '../screens/ChatbotModal'; // Import ChatbotModal
 // Import screens
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LandingScreen from '../screens/LandingScreen';
 import SearchScreen from '../screens/SearchScreen';
@@ -116,6 +117,11 @@ const AuthNavigator = () => {
         <Stack.Screen
           name="ProfileUpdate"
           component={ProfileUpdateScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ForgotPassword"
+          component={ForgotPasswordScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

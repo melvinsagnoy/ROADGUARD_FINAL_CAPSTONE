@@ -1,0 +1,35 @@
+{
+  "project_info": {
+    "project_number": "423510387855",
+    "firebase_url": "https://languard-18ec2-default-rtdb.firebaseio.com",
+    "project_id": "languard-18ec2",
+    "storage_bucket": "languard-18ec2.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:423510387855:android:fe225ae6f14077c39fd4fa",
+        "android_client_info": {
+          "package_name": "com.RoadGuard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4bJMGSOicGD3_DC_h6WXAHSecokYUfqc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "423510387855-2lphv8q7bd950fhdmlafjf0ue3c48ehb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Modal, TextInput, StyleSheet, Alert, Imag
 import * as Location from 'expo-location';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { ref, set, serverTimestamp, get } from 'firebase/database';
+import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { database } from '../firebaseConfig';
 
@@ -15,8 +16,10 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
   const [usingCurrentLocation, setUsingCurrentLocation] = useState(true);
   const [loading, setLoading] = useState(false);
   const [rewardPoints, setRewardPoints] = useState(0);
+  const [totalPoints, setTotalPoints] = useState(0); // For Realtime Database sync
 
   const auth = getAuth();
+  const firestore = getFirestore();
   const currentUser = auth.currentUser;
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
@@ -53,8 +56,41 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
         getCurrentLocation();
       }
       fetchRewardPoints();
+      fetchTotalScore(); // Fetch total score when the modal becomes visible
     }
   }, [visible, usingCurrentLocation, reward]);
+
+  const sanitizeEmail = (email) => email.replace(/[@.]/g, '_');
+
+  // Fetch user's total score from Firestore and sync with Realtime Database
+  const fetchTotalScore = async () => {
+    if (!currentUser) return;
+
+    const userDocRef = doc(firestore, 'users', currentUser.email);
+    const sanitizedEmail = sanitizeEmail(currentUser.email);
+    const realtimeRef = ref(database, `users/${sanitizedEmail}/points`);
+
+    // Listen to Firestore changes
+    const unsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data();
+        const scores = data.scores || [];
+        const total = scores.reduce((sum, score) => sum + score.score, 0);
+
+        // Update Realtime Database
+        set(realtimeRef, total)
+          .then(() => {
+            console.log('Total points synced to Realtime Database:', total);
+            setTotalPoints(total);
+          })
+          .catch((error) => console.error('Error syncing points:', error));
+      } else {
+        console.error('User document does not exist in Firestore');
+      }
+    });
+
+    return () => unsubscribe();
+  };
 
   const getCurrentLocation = async () => {
     try {
@@ -104,10 +140,6 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
     }
   };
 
-  const sanitizeEmail = (email) => {
-    return email.replace(/[@.]/g, '_');
-  };
-
   const handleClaim = async () => {
     if (fullName.trim() === '' || phoneNumber.trim() === '' || address.trim() === '') {
       Alert.alert('Error', 'Please provide full name, phone number, and address.');
@@ -124,52 +156,36 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
 
     try {
       setLoading(true);
-      const userSnapshot = await get(userRef);
-      if (userSnapshot.exists()) {
-        const userData = userSnapshot.val();
-        const currentPoints = userData.points || 0;
 
-        if (currentPoints < rewardPoints) {
-          Alert.alert('Error', 'Not enough points to claim this reward.');
-          setLoading(false);
-          return;
-        }
-
-        const newPoints = currentPoints - rewardPoints;
-
-        await set(claimRef, {
-          fullName,
-          phoneNumber,
-          address,
-          email: currentUser?.email || 'Unknown',
-          timestamp: serverTimestamp(),
-          status: 'pending',
-          rewardName: reward?.rewardName || 'No Name',
-          rewardImageUrl: reward?.imageUrl || '',
-          pointsRequired: rewardPoints,
-        });
-
-        await set(userRef, {
-          ...userData,
-          points: newPoints,
-        });
-
-        Alert.alert('Success', 'Claim submitted successfully.');
-        onClose();
-      } else {
-        Alert.alert('Error', 'User data not found.');
+      if (totalPoints < rewardPoints) {
+        Alert.alert('Error', 'Not enough points to claim this reward.');
+        setLoading(false);
+        return;
       }
+
+      const newPoints = totalPoints - rewardPoints;
+
+      // Submit claim and update points
+      await set(claimRef, {
+        fullName,
+        phoneNumber,
+        address,
+        email: currentUser?.email || 'Unknown',
+        timestamp: serverTimestamp(),
+        status: 'pending',
+        rewardName: reward?.rewardName || 'No Name',
+        rewardImageUrl: reward?.imageUrl || '',
+        pointsRequired: rewardPoints,
+      });
+
+      await set(userRef, { points: newPoints });
+
+      Alert.alert('Success', 'Claim submitted successfully.');
+      onClose();
     } catch (error) {
       Alert.alert('Error', `Unable to submit claim: ${error.message}`);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleToggleAddressMethod = () => {
-    setUsingCurrentLocation(!usingCurrentLocation);
-    if (!usingCurrentLocation) {
-      setAddress('');
     }
   };
 
@@ -201,7 +217,11 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
           <Text style={[styles.rewardPoints, { color: currentTheme.text }]}>
             Points Required: {rewardPoints > 0 ? rewardPoints : 'N/A'}
           </Text>
+          <Text style={[styles.totalPoints, { color: currentTheme.text }]}>
+            Total Points: {totalPoints}
+          </Text>
 
+          {/* Claim Form */}
           <TextInput
             style={[styles.input, { borderColor: currentTheme.inputBorder, color: currentTheme.text }]}
             placeholder="Enter your full name"
@@ -220,50 +240,13 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
             keyboardType="phone-pad"
           />
 
-          <View style={styles.toggleContainer}>
-            <TouchableOpacity
-              style={[
-                styles.toggleButton,
-                usingCurrentLocation && { backgroundColor: currentTheme.activeToggleBackground },
-              ]}
-              onPress={() => setUsingCurrentLocation(true)}
-            >
-              <Text
-                style={[
-                  styles.toggleText,
-                  usingCurrentLocation && { color: currentTheme.activeToggleText },
-                ]}
-              >
-                Use Current Location
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.toggleButton,
-                !usingCurrentLocation && { backgroundColor: currentTheme.activeToggleBackground },
-              ]}
-              onPress={() => setUsingCurrentLocation(false)}
-            >
-              <Text
-                style={[
-                  styles.toggleText,
-                  !usingCurrentLocation && { color: currentTheme.activeToggleText },
-                ]}
-              >
-                Enter Address Manually
-              </Text>
-            </TouchableOpacity>
-          </View>
-
           <TextInput
             style={[styles.input, { borderColor: currentTheme.inputBorder, color: currentTheme.text }]}
             placeholder={usingCurrentLocation ? 'Address (Auto-filled)' : 'Enter your address'}
             placeholderTextColor={isDarkMode ? '#888888' : '#AAAAAA'}
             value={address}
             onChangeText={(text) => {
-              if (!usingCurrentLocation) {
-                setAddress(text);
-              }
+              if (!usingCurrentLocation) setAddress(text);
             }}
             editable={!usingCurrentLocation}
           />
@@ -318,6 +301,11 @@ const styles = StyleSheet.create({
   },
   rewardPoints: {
     fontSize: 14,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  totalPoints: {
+    fontSize: 14,
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -327,24 +315,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 5,
     marginBottom: 20,
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 20,
-  },
-  toggleButton: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 5,
-    borderWidth: 1,
-    marginHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toggleText: {
-    fontSize: 14,
   },
   claimButton: {
     padding: 15,
