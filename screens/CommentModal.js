@@ -5,6 +5,7 @@ import { firestore, auth, database } from '../firebaseConfig'; // Ensure proper 
 import { doc, getDoc } from 'firebase/firestore';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useColorScheme } from 'react-native';
+import { useFonts } from 'expo-font';
 
 const CommentModal = ({ visible, onClose, postId }) => {
   const [comment, setComment] = useState('');
@@ -16,7 +17,10 @@ const CommentModal = ({ visible, onClose, postId }) => {
   const [expandedReplies, setExpandedReplies] = useState({}); // Manage expanded replies state
   const [commentLoading, setCommentLoading] = useState(false); // Loading state for submitting a comment
   const [replyLoading, setReplyLoading] = useState({}); // Loading state for submitting a reply (per comment)
-
+  const [fontsLoaded] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
   const colorScheme = useColorScheme(); // Detect device theme preference
   const isDarkMode = colorScheme === 'dark';
 
@@ -26,7 +30,7 @@ const CommentModal = ({ visible, onClose, postId }) => {
       background: '#FFFFFF',
       text: '#000000',
       inputBackground: '#F2F2F2',
-      buttonBackground: '#007AFF',
+      buttonBackground: '#F6E000',
       buttonText: '#FFFFFF',
       borderColor: '#CCCCCC',
     },
@@ -228,7 +232,7 @@ const CommentModal = ({ visible, onClose, postId }) => {
               style={styles.replyButton}
               onPress={() => setShowReplyInput(showReplyInput === item.id ? null : item.id)}
             >
-              <Text style={[styles.replyButtonText, { color: currentTheme.buttonBackground }]}>Reply</Text>
+              <Text style={[styles.replyButtonText]}>Reply</Text>
             </TouchableOpacity>
             {showReplyInput === item.id && (
               <View style={styles.replyInputContainer}>
@@ -281,7 +285,7 @@ const CommentModal = ({ visible, onClose, postId }) => {
   return (
     <Modal visible={visible} onRequestClose={onClose} animationType="slide">
       <View style={[styles.container, { backgroundColor: currentTheme.background }]}>
-        <Text style={[styles.title, { color: currentTheme.buttonBackground }]}>Comments</Text>
+        <Text style={[styles.title,]}>Comments</Text>
         {loading ? (
           <ActivityIndicator size="large" color={currentTheme.buttonBackground} />
         ) : (
@@ -309,7 +313,7 @@ const CommentModal = ({ visible, onClose, postId }) => {
           </TouchableOpacity>
         </View>
         <TouchableOpacity onPress={onClose} style={[styles.closeButton, { backgroundColor: currentTheme.inputBackground }]}>
-          <Text style={[styles.closeButtonText, { color: currentTheme.buttonBackground }]}>Close</Text>
+          <Text style={[styles.closeButtonText]}>Close</Text>
         </TouchableOpacity>
       </View>
     </Modal>
@@ -321,20 +325,23 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#ffffff',
+    fontFamily: 'Poppins-Regular',
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#007AFF',
+    fontFamily: 'Poppins-Bold',
+    color: '#000',
     marginBottom: 20,
   },
   commentContainer: {
+    fontFamily: 'Poppins-Regular',
     marginBottom: 15,
     backgroundColor: '#f2f2f2',
     padding: 10,
     borderRadius: 8,
   },
   commentHeader: {
+    fontFamily: 'Poppins-Regular',
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
@@ -352,17 +359,20 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   commentContent: {
+    fontFamily: 'Poppins-Regular',
     flex: 1,
   },
   commentAuthor: {
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     color: '#007AFF',
   },
   commentText: {
+    fontFamily: 'Poppins-Regular',
     color: '#000000',
     marginTop: 5,
   },
   commentTime: {
+    fontFamily: 'Poppins-Regular',
     fontSize: 12,
     color: '#666666',
     marginTop: 5,
@@ -372,10 +382,12 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   replyButtonText: {
-    color: '#007AFF',
+    fontFamily: 'Poppins-Regular',
+    color: '#000',
     fontSize: 14,
   },
   replyContainer: {
+    fontFamily: 'Poppins-Regular',
     marginTop: 10,
     paddingLeft: 50,
     borderLeftWidth: 2,
@@ -383,17 +395,20 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   replyHeader: {
+    fontFamily: 'Poppins-Regular',
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   replyContent: {
+    fontFamily: 'Poppins-Regular',
     flex: 1,
   },
   replyAuthor: {
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     color: '#007AFF',
   },
   replyText: {
+    fontFamily: 'Poppins-Regular',
     color: '#000000',
     marginTop: 5,
   },
@@ -414,6 +429,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   textInput: {
+    fontFamily: 'Poppins-Regular',
     flex: 1,
     height: 40,
     backgroundColor: '#f2f2f2',
@@ -447,7 +463,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   closeButtonText: {
-    color: '#007AFF',
+    fontFamily: 'Poppins-Bold',
+    color: '#000',
     fontSize: 18,
   },
   noCommentsText: {

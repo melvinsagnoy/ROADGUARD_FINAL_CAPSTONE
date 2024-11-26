@@ -80,7 +80,9 @@ const HomeScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState({});
   const [fontsLoaded] = useFonts({
-    Poppins: require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+    'Poppins-Italic': require('../assets/fonts/Poppins-Italic.ttf'),
   });
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState(null);
@@ -243,7 +245,7 @@ const submitComment = async () => {
   }
 };
 
-  const fetchUserData = async (email) => {
+const fetchUserData = async (email) => {
   try {
     const userRef = doc(firestore, 'users', email);
     const docSnap = await getDoc(userRef);
@@ -252,13 +254,15 @@ const submitComment = async () => {
       const userData = docSnap.data();
       setUserData({
         ...userData,
-        photoURL: userData.photoURL || 'https://via.placeholder.com/150',
+        photoURL: userData.photoURL || 'https://via.placeholder.com/150', // Default photoURL if none exists
       });
     } else {
       console.log('No user data found for:', email);
+      setUserData({ photoURL: 'https://via.placeholder.com/150' }); // Default if no user data found
     }
   } catch (error) {
     console.error('Error fetching user data:', error);
+    setUserData({ photoURL: 'https://via.placeholder.com/150' }); // Default fallback
   }
 };
 
@@ -477,10 +481,12 @@ const renderNewsFeed = () => {
   return posts.map((post) => (
     <View key={post.id} style={[styles.feedItem, { backgroundColor: theme.itemBackground }]}>
       <View style={styles.feedHeader}>
-        <Image
-          source={{ uri: post.photoURL || 'https://via.placeholder.com/50' }}
-          style={styles.profileIcon}
-        />
+      {userData && (
+          <Image
+            source={{ uri: userData.photoURL || 'https://via.placeholder.com/150' }}
+            style={styles.profileIconImage}
+          />
+        )}
         <View style={styles.feedHeaderText}>
           <Text style={[styles.feedAuthor, { color: theme.text }]}>
             {post.displayName}
@@ -632,6 +638,9 @@ const renderNewsFeed = () => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
    <View style={[styles.weatherHeaderContainer, { borderBottomColor: theme.border }]}>
     <WeatherHeader apiKey={apiKey} latitude={10.3157} longitude={123.8854} />
+    <TouchableOpacity style={styles.createPostButton} onPress={handleCreatePost}>
+          <MaterialIcons name="add" size={24} color="black" />
+        </TouchableOpacity>
   </View>
     {isLoading && (
       <View style={styles.loadingOverlay}>
@@ -682,23 +691,19 @@ const renderNewsFeed = () => {
 
         
       <View style={styles.createPostButtonContainer}>
-        <TouchableOpacity style={styles.createPostButton} onPress={handleCreatePost}>
-          <MaterialIcons name="add" size={24} color="black" />
-        </TouchableOpacity>
+        
       </View>
 
       <View style={styles.headerHead}>
         <Image source={require('../assets/icon.png')} style={styles.headerIcon} />
         <Text style={[styles.headerTitle, { color: theme.text }]}>RoadGuard</Text>
-        <TouchableOpacity style={styles.menuIconContainer} onPress={toggleMenuModal}>
-          <MaterialIcons name="menu" size={30} color={theme.text} />
-        </TouchableOpacity>
+
 
         {user && (
           <TouchableOpacity style={styles.profileIconContainer} onPress={() => navigation.navigate('Profile')}>
             <Image
               source={{ uri: userData.photoURL || 'https://via.placeholder.com/150' }}
-              style={styles.profileIcon}
+              style={styles.profileIconImage}
             />
           </TouchableOpacity>
         )}
@@ -730,22 +735,34 @@ const renderNewsFeed = () => {
 };
 
 const styles = StyleSheet.create({
-    container: {
+  container: {
     flex: 1,
     backgroundColor: '#fff', // Default background color
+    fontFamily: 'Poppins-Regular',
   },
   weatherHeaderContainer: {
-  paddingTop: 10,
-  paddingHorizontal: 20, // Light background for visibility
-  borderBottomWidth: 2,
-  borderBottomColor: '#dedede',
-  top: 100
-},
-
+    padding: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: '#dedede',
+    top: 100
+  },
+  weatherCard: {
+    borderRadius: 12,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    width: '50%', // Ensures it's 50% of the parent container
+    backgroundColor: '#FFFFFF',
+    fontFamily: 'Poppins-Regular',
+  },  
   commentItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginVertical: 4,
+    fontFamily: 'Poppins-Regular',
   },
   commentProfileIcon: {
     width: 30,
@@ -755,6 +772,7 @@ const styles = StyleSheet.create({
   },
   commentTextContainer: {
     flex: 1,
+    fontFamily: 'Poppins-Regular',
   },
   commentUserName: {
     fontWeight: 'bold',
@@ -780,16 +798,11 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    paddingTop: 15,
-  },
-  createPostButtonContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
+    },
    commentButton: {
     marginTop: 10,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   headerHead: {
     position: 'absolute',
@@ -821,7 +834,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 25,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     position: 'absolute',
     top: 65,
     left: 75,
@@ -834,7 +847,13 @@ const styles = StyleSheet.create({
   profileIconContainer: {
     position: 'absolute',
     top: 60,
-    right: 60,
+    right: 20,
+  },
+  profileIconImage: {
+    width: 55,
+    height: 55,
+    borderRadius: 30,
+    borderWidth: 1
   },
   profileIcon: {
     width: 40,
@@ -877,7 +896,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   newsFeedContainer: {
-    marginTop: 140,
+    marginTop: 95,
     padding: 10,
   },
    feedHeader: {
@@ -888,14 +907,13 @@ const styles = StyleSheet.create({
   profileImage: {
     width: 50,
     height: 50,
-    borderRadius: 25,
-    marginRight: 10,
+    borderRadius: 25
   },
   feedAuthor: {
     fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 5,
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins-Bold',
+    marginBottom: 0,
+    marginLeft: 10,
   },
   feedItem: {
     backgroundColor: '#fff',
@@ -913,20 +931,22 @@ const styles = StyleSheet.create({
   },
   feedTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     marginBottom: 5,
-    fontFamily: 'Poppins',
+  },
+  postDate: {
+    fontFamily: 'Poppins-Regular',
   },
   feedBody: {
     fontSize: 14,
     marginBottom: 10,
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins-Regular',
   },
   feedLocation: {
     fontSize: 12,
-    marginBottom: 5,
+    marginLeft: 5,
     fontStyle: 'italic',
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins-Italic',
   },
   feedImage: {
     width: '100%',
@@ -936,14 +956,14 @@ const styles = StyleSheet.create({
   },
   createPostButton: {
     position: 'absolute',
-    right: 7,
-    top: 80,
-    backgroundColor: '#E0C55B',
+    right: 20,
+    top: 40,
+    backgroundColor: '#F6EF00',
     padding: 10,
     paddingVertical: 13,
     borderRadius: 30,
     flexDirection: 'row',
-    width: '13%',
+    width: '15%',
     textAlign: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

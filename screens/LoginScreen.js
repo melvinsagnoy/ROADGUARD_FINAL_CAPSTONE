@@ -6,6 +6,8 @@ import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { doc, getDoc } from 'firebase/firestore';
+import { firestore } from '../firebaseConfig';
 
 const loginValidationSchema = yup.object().shape({
   emailOrPhone: yup.string().required('Email or phone number is required'),
@@ -19,7 +21,8 @@ const LoginScreen = ({ navigation }) => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   const [fontsLoaded] = useFonts({
-    Poppins: require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
   });
 
   useEffect(() => {
@@ -42,11 +45,11 @@ const LoginScreen = ({ navigation }) => {
       try {
         const savedUserInfo = await AsyncStorage.getItem('userInfo');
         const savedRememberMe = await AsyncStorage.getItem('rememberMe');
-        
+
         if (savedUserInfo && savedRememberMe === 'true') {
           const { emailOrPhone, password } = JSON.parse(savedUserInfo);
           setInitialValues({ emailOrPhone, password });
-          setRememberMe(true); // Set the checkbox to checked
+          setRememberMe(true);
         }
       } catch (error) {
         console.error('Error loading credentials', error);
@@ -59,45 +62,49 @@ const LoginScreen = ({ navigation }) => {
   const handleLogin = async (emailOrPhone, password) => {
     setLoading(true);
     const auth = getAuth();
-
+  
     try {
+      // Sign in the user
       const userCredential = await signInWithEmailAndPassword(auth, emailOrPhone, password);
-
-      // Store credentials and rememberMe status in AsyncStorage if "Remember Me" is checked
-      if (rememberMe) {
-        await AsyncStorage.setItem('userInfo', JSON.stringify({ emailOrPhone, password }));
-        await AsyncStorage.setItem('rememberMe', 'true');
+      
+      // Fetch user data from Firestore
+      const userRef = doc(firestore, 'users', userCredential.user.email);  // Assuming email is used as document ID
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        
+        // Check if the account is disabled
+        if (userData.disabled === true) {
+          // If the account is disabled, show an alert and stop further navigation
+          setLoading(false);
+          Alert.alert('Account Disabled', 'Your account is disabled. Please contact support.');
+          return;
+        }
+        
+        // Proceed with login if the account is not disabled
+        if (rememberMe) {
+          await AsyncStorage.setItem('userInfo', JSON.stringify({ emailOrPhone, password }));
+          await AsyncStorage.setItem('rememberMe', 'true');
+        } else {
+          await AsyncStorage.removeItem('userInfo');
+          await AsyncStorage.setItem('rememberMe', 'false');
+        }
+  
+        await AsyncStorage.setItem('userLoggedIn', JSON.stringify({
+          email: userCredential.user.email,
+          uid: userCredential.user.uid,
+        }));
+  
+        setLoading(false);
+        navigation.navigate('VerificationOptions');  // Navigate to the next screen
       } else {
-        // Clear stored credentials if "Remember Me" is not checked
-        await AsyncStorage.removeItem('userInfo');
-        await AsyncStorage.setItem('rememberMe', 'false');
+        setLoading(false);
+        Alert.alert('User not found', 'No user data found.');
       }
-
-      await AsyncStorage.setItem('userLoggedIn', JSON.stringify({
-        email: userCredential.user.email,
-        uid: userCredential.user.uid,
-      }));
-      setLoading(false);
-      navigation.navigate('VerificationOptions');
     } catch (error) {
       setLoading(false);
       Alert.alert('Login Error', error.message);
-    }
-  };
-
-  const handleLogout = async () => {
-    const auth = getAuth();
-    try {
-      await auth.signOut();
-      // Clear credentials only if "Remember Me" was not checked
-      const savedRememberMe = await AsyncStorage.getItem('rememberMe');
-      if (savedRememberMe !== 'true') {
-        await AsyncStorage.removeItem('userInfo');
-      }
-      await AsyncStorage.removeItem('userLoggedIn'); // Clear logged-in status
-      navigation.navigate('Login'); // Navigate to login screen
-    } catch (error) {
-      console.error('Error during logout', error);
     }
   };
 
@@ -112,21 +119,16 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Top Background */}
       <View style={styles.topBackground}>
-        <Image
-          source={require('../assets/icon.png')}
-          style={styles.logo}
-        />
+        <Image source={require('../assets/icon.png')} style={styles.logo} />
       </View>
 
-      {/* Rounded Container for Login */}
       <View style={styles.loginContainer}>
         <Text style={styles.welcomeText}>Welcome back!</Text>
         <Formik
           validationSchema={loginValidationSchema}
           initialValues={initialValues}
-          enableReinitialize={true}  // Important: Ensures Formik re-initializes with new values
+          enableReinitialize={true}
           onSubmit={(values) => handleLogin(values.emailOrPhone, values.password)}
         >
           {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
@@ -183,13 +185,8 @@ const LoginScreen = ({ navigation }) => {
                     <Image source={require('../assets/tire.png')} style={styles.loadingImage} />
                   </Animated.View>
                 ) : (
-                  <Text style={styles.buttonText}>Sign In</Text>
+                  <Text style={styles.buttonText}>Login</Text>
                 )}
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.googleSignIn}>
-                <Image source={require('../assets/google_logo.png')} style={styles.googleLogo} />
-                <Text style={styles.googleText}>Sign in with Google</Text>
               </TouchableOpacity>
             </>
           )}
@@ -197,7 +194,7 @@ const LoginScreen = ({ navigation }) => {
 
         <TouchableOpacity onPress={() => navigation.navigate('Register')}>
           <Text style={styles.registerText}>
-            Don’t have an account? <Text style={styles.signUp}>Sign Up</Text>
+            Don’t have an account? <Text style={styles.signUp}>Register</Text>
           </Text>
         </TouchableOpacity>
       </View>
@@ -208,14 +205,13 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFAE6',
+    backgroundColor: 'FFFAE6',
     alignItems: 'center',
-    justifyContent: 'flex-start',
   },
   topBackground: {
     width: '100%',
     height: '35%',
-    backgroundColor: '#FFFAE6',
+    backgroundColor: 'FFFAE6',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -234,10 +230,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: 'center',
     marginTop: 50,
+    height: '100%',
   },
   welcomeText: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     color: '#3A3A3A',
     marginBottom: 20,
   },
@@ -251,21 +248,25 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     backgroundColor: '#F1F1F1',
     color: '#333',
+    fontFamily: 'Poppins-Regular',
   },
   rememberRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 20,
     alignItems: 'center',
+    width: '100%',
+    marginVertical: 15,
   },
   rememberMe: {
     color: '#7C7A7A',
     fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    marginLeft: 10,
   },
   forgotPassword: {
     color: '#F6EF00',
     fontSize: 14,
+    fontFamily: 'Poppins-Regular',
   },
   checkboxContainer: {
     flexDirection: 'row',
@@ -277,7 +278,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#F6EF00',
     borderRadius: 4,
-    marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -296,50 +296,34 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#000',
     fontSize: 18,
-    fontWeight: 'bold',
-  },
-  googleSignIn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderColor: '#E0E0E0',
-    borderWidth: 1,
-    borderRadius: 25,
-    height: 50,
-    width: 190,
-    marginVertical: 10,
-    backgroundColor: '#FFF',
-  },
-  googleLogo: {
-    width: 24,
-    height: 24,
-    marginRight: 10,
-  },
-  googleText: {
-    fontSize: 16,
-    color: '#333',
+    fontFamily: 'Poppins-Bold',
   },
   registerText: {
     marginTop: 20,
     color: '#7C7A7A',
     fontSize: 14,
+    fontFamily: 'Poppins-Regular',
   },
   signUp: {
     color: '#F6EF00',
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   errorText: {
     fontSize: 12,
     color: 'red',
     marginBottom: 10,
+    fontFamily: 'Poppins-Regular',
   },
   loadingContainer: {
-    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 50, // Ensures a controlled size
+    height: 50,
   },
   loadingImage: {
-    width: 30,
+    width: 30, // Proper dimensions for the spinner
     height: 30,
-  },
+  },  
 });
 
 export default LoginScreen;

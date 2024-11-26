@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Dimensions, Platform, useColorScheme } from 're
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import * as Notifications from 'expo-notifications';
+import { useFonts } from 'expo-font';
 
 const WeatherHeader = ({ apiKey, latitude, longitude }) => {
   const [temperature, setTemperature] = useState('');
@@ -13,7 +14,10 @@ const WeatherHeader = ({ apiKey, latitude, longitude }) => {
   const { width } = Dimensions.get('window');
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
-
+  const [fontsLoaded] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
   // Define the themes
   const theme = {
     light: {
@@ -95,13 +99,13 @@ const WeatherHeader = ({ apiKey, latitude, longitude }) => {
   };
 
   return (
-    <View style={[styles.weatherCard, { backgroundColor: currentTheme.backgroundColor, width: width - 50 }]}>
+    <View style={[styles.weatherCard, { backgroundColor: currentTheme.backgroundColor}]}>
       <View style={styles.weatherContent}>
         {getWeatherIcon(iconCode)}
         <View style={styles.textContainer}>
-          <Text style={[styles.temperatureText, { fontSize: width < 320 ? 32 : 29, color: currentTheme.textColor }]}>{temperature}</Text>
-          <Text style={[styles.conditionText, { fontSize: width < 350 ? 14 : 15, color: currentTheme.conditionColor }]}>{condition}</Text>
-          <Text style={[styles.locationText, { fontSize: width < 350 ? 12 : 14, color: currentTheme.locationColor }]}>{location}</Text>
+          <Text style={[styles.temperatureText, { fontSize: width < 320 ? 20 : 20, color: currentTheme.textColor }]}>{temperature}</Text>
+          <Text style={[styles.conditionText, { fontSize: width < 350 ? 13 : 13, color: currentTheme.conditionColor }]}>{condition}</Text>
+          <Text style={[styles.locationText, { fontSize: width < 350 ? 13 : 13, color: currentTheme.locationColor }]}>{location}</Text>
         </View>
       </View>
     </View>
@@ -112,33 +116,34 @@ const styles = StyleSheet.create({
   weatherCard: {
     borderRadius: 12,
     padding: 10,
-    marginHorizontal: 10,
-    marginVertical: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+    width: '75%',
+    fontFamily: 'Poppins-Regular',
   },
   weatherContent: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: 'row', // Align icon and text horizontally
+    alignItems: 'center', // Vertically center the icon and text
   },
   textContainer: {
-    marginLeft: 15,
+    marginLeft: 15, // Space between the icon and text
   },
   temperatureText: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 5, // Adjusted font size for clarity
+    fontFamily: 'Poppins-Bold',
   },
   conditionText: {
     fontSize: 14,
     marginTop: 3,
+    fontFamily: 'Poppins-Regular',
   },
   locationText: {
     fontSize: 12,
     marginTop: 2,
+    fontFamily: 'Poppins-Regular',
   },
   iconShadow: {
     shadowColor: '#000',
@@ -148,5 +153,6 @@ const styles = StyleSheet.create({
     elevation: Platform.OS === 'android' ? 4 : 0,
   },
 });
+
 
 export default WeatherHeader;

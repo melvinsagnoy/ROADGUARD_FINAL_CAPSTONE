@@ -3,9 +3,13 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, Image } from 'react-na
 import * as LocalAuthentication from 'expo-local-authentication';
 import { auth } from '../firebaseConfig';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Import icon library
+import { useFonts } from 'expo-font';
 
 const VerificationOptionsScreen = ({ navigation }) => {
-
+  const [fontsLoaded] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
   // Function to check if a user is authenticated
   const checkAuthentication = () => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -74,12 +78,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFAE6',
     alignItems: 'center',
     justifyContent: 'center',
+    fontFamily: 'Poppins-Regular',
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
     color: '#3A3A3A',
     marginBottom: 30,
+    fontFamily: 'Poppins-Bold',
   },
   buttonContainer: {
     flexDirection: 'row', // Align buttons horizontally
@@ -94,6 +99,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10, // Space between buttons
     justifyContent: 'center',
     alignItems: 'center',
+    fontFamily: 'Poppins-Regular', // Ensure consistent font in buttons
   },
 });
 

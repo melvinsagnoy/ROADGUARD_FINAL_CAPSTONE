@@ -4,7 +4,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import NavBar from './NavBar';
 import { auth, firestore } from '../firebaseConfig';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-
+import { useFonts } from 'expo-font';
 
 const SearchScreen = ({ navigation, toggleTheme, isDarkTheme }) => {
   // Define light and dark themes
@@ -14,6 +14,10 @@ const lightTheme = {
   primary: '#E0C55B',
   modalBackground: '#FFFFFF',
 };
+const [fontsLoaded] = useFonts({
+  'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+  'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+});
 
 const darkTheme = {
   background: '#121212',
@@ -216,15 +220,17 @@ const colorScheme = useColorScheme();
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    fontFamily: 'Poppins-Regular',
   },
   header: {
     top: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 30,
+    padding: 20,
     width: '100%',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
+    marginBottom: 25
   },
   logo: {
     width: 50,
@@ -234,18 +240,19 @@ const styles = StyleSheet.create({
   headerTitle: {
     left: -50,
     fontSize: 25,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   rankContainer: {
     padding: 20,
     borderRadius: 10,
-    marginVertical: 20,
+    marginVertical: 5,
     width: '90%',
     alignSelf: 'center',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 3,
+    fontFamily: 'Poppins-Regular',
   },
   rankInfo: {
     alignItems: 'flex-start',
@@ -255,11 +262,12 @@ const styles = StyleSheet.create({
   },
   rankText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   rankBadgeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    fontFamily: 'Poppins-Regular',
   },
   rankBadge: {
     width: 60,
@@ -271,14 +279,14 @@ const styles = StyleSheet.create({
   },
   rankBadgeText: {
     fontSize: 30,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   pointsContainer: {
     alignItems: 'flex-start',
   },
   pointsText: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   rankDescription: {
     fontSize: 16,
@@ -309,13 +317,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     marginBottom: 5,
   },
   description: {
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 10,
+    fontFamily: 'Poppins-Regular',
   },
   playButton: {
     padding: 10,
@@ -329,7 +338,7 @@ const styles = StyleSheet.create({
   },
   playButtonText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   modalOverlay: {
     flex: 1,
@@ -343,6 +352,7 @@ const styles = StyleSheet.create({
     width: '80%',
     justifyContent: 'center',
     alignItems: 'center',
+    fontFamily: 'Poppins-Regular',
   },
   modalText1: {
     padding: 20,
@@ -350,6 +360,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     fontSize: 18,
     margin: 20,
+    fontFamily: 'Poppins-Regular',
   },
   modalText2: {
     padding: 20,
@@ -357,6 +368,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     fontSize: 18,
     margin: 20,
+    fontFamily: 'Poppins-Regular',
   },
   settingOption: {
     flexDirection: 'row',
@@ -367,6 +379,7 @@ const styles = StyleSheet.create({
   },
   settingText: {
     fontSize: 18,
+    fontFamily: 'Poppins-Regular',
   },
 });
 

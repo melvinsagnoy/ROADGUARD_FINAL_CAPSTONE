@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, Animated, Image, Dimen
 import { firestore } from '../firebaseConfig'; 
 import { doc, getDoc } from 'firebase/firestore';
 import { auth } from '../firebaseConfig'; 
+import { useFonts } from 'expo-font';
 
 const { width } = Dimensions.get('window');
 
@@ -11,6 +12,10 @@ const PasscodeVerificationScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const maxDigits = 4;
   const rotateAnim = useRef(new Animated.Value(0)).current;
+  const [fontsLoaded] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
 
   const handleNumberPress = (number) => {
     if (passcode.length < maxDigits) {
@@ -121,6 +126,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    fontFamily: 'Poppins-Regular',
     backgroundColor: '#FFFAE6',
   },
   logo: {
@@ -142,6 +148,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     color: '#333',
+    fontFamily: 'Poppins-Bold',
     marginBottom: 10,
   },
   passcodeContainer: {

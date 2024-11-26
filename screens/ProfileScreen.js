@@ -9,7 +9,7 @@ import NavBar from './NavBar';
 import { ref as dbRef, get, onValue } from 'firebase/database';  // For Realtime Database
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';  // For Storage
 import ClaimingFormModal from './ClaimingFormModal'; 
-
+import { useFonts } from 'expo-font';
 
 
 const ProfileScreen = ({ navigation }) => {
@@ -36,6 +36,10 @@ const darkTheme = {
   closeButtonBackground: '#FF6347',
   redeemButtonBackground: '#BB86FC',
 };
+const [fontsLoaded] = useFonts({
+  'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+  'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+});
 const colorScheme = useColorScheme();
 const isDarkMode = colorScheme === 'dark';
 const theme = isDarkMode ? darkTheme : lightTheme;
@@ -608,6 +612,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
     alignItems: 'center',
     paddingTop: 20,
+    fontFamily: 'Poppins-Regular',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -621,7 +626,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#000',
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
    modalContainer: {
     flex: 1,
@@ -635,19 +640,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 10,
     alignItems: 'center',
+    fontFamily: 'Poppins-Regular',
   },
     modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     marginBottom: 10,
   },
   modalText: {
     fontSize: 16,
     marginBottom: 20,
+    fontFamily: 'Poppins-Regular',
   },
   pointsText: {
   fontSize: 18,
-  fontWeight: 'bold',
+  fontFamily: 'Poppins-Bold',
   marginBottom: 10,
   textAlign: 'center',
 },
@@ -666,7 +673,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   profileCard: {
     backgroundColor: '#FFD700',
@@ -675,6 +682,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: '90%',
     marginBottom: 20,
+    fontFamily: 'Poppins-Regular',
   },
   profileImage: {
     width: 100,
@@ -684,17 +692,18 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     marginBottom: 5,
   },
   email: {
     fontSize: 16,
     color: '#555',
     marginBottom: 5,
+    fontFamily: 'Poppins-Regular',
   },
   points: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     marginBottom: 20,
   },
   buttonRow: {
@@ -728,6 +737,7 @@ const styles = StyleSheet.create({
   optionText: {
     marginLeft: 10,
     fontSize: 16,
+    fontFamily: 'Poppins-Regular',
   },
   editProfileContainer: {
     flex: 1,
@@ -743,6 +753,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingHorizontal: 10,
     marginBottom: 10,
+    fontFamily: 'Poppins-Regular',
     backgroundColor: '#FFF',
   },
   saveButton: {
@@ -753,9 +764,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     width: '80%',
     alignItems: 'center',
+    fontFamily: 'Poppins-Regular',
   },
   saveButtonText: {
     color: '#FFF',
+    fontFamily: 'Poppins-Regular',
     fontSize: 16,
   },
   cancelButton: {
@@ -766,10 +779,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     width: '80%',
     alignItems: 'center',
+    fontFamily: 'Poppins-Regular',
   },
   cancelButtonText: {
     color: '#FFF',
     fontSize: 16,
+    fontFamily: 'Poppins-Regular',
   },
   loadingContainer: {
     flex: 1,
@@ -791,7 +806,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     marginBottom: 20,
   },
   leaderboardItem: {
@@ -807,7 +822,7 @@ const styles = StyleSheet.create({
   },
   rankText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     marginRight: 10,
   },
   closeButton: {
@@ -888,7 +903,7 @@ sendMessageButton: {
   },
   rewardText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   rewardPoints: {
     fontSize: 14,

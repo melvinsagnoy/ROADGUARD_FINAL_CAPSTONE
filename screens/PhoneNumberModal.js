@@ -1,8 +1,18 @@
 import React, { useState } from 'react';
 import { Modal, View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { useFonts } from 'expo-font';
 
 const PhoneNumberModal = ({ visible, onClose, email }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
+
+  const [fontsLoaded] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   const handleSave = () => {
     onClose(phoneNumber);
@@ -51,7 +61,9 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
+    fontFamily: 'Poppins-Bold',
     marginBottom: 10,
+    textAlign: 'center',
   },
   input: {
     width: '100%',
@@ -61,18 +73,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     marginBottom: 20,
+    fontFamily: 'Poppins-Regular',
+    fontSize: 14,
   },
   button: {
     width: '100%',
-    height: 40,
-    backgroundColor: '#E0C55B',
+    height: 50,
+    backgroundColor: '#F6EF00',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 20,
   },
   buttonText: {
     fontSize: 16,
-    color: '#FFF',
+    color: '#000',
+    fontFamily: 'Poppins-Bold',
   },
   closeButton: {
     marginTop: 10,
@@ -81,8 +96,9 @@ const styles = StyleSheet.create({
   },
   closeButtonText: {
     fontSize: 16,
-    color: '#E0C55B',
-    textDecorationLine: 'underline',
+    color: '#000',
+    textDecorationLine: 'none',
+    fontFamily: 'Poppins-Regular',
   },
 });
 

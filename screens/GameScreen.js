@@ -6,6 +6,12 @@ import Matter from 'matter-js';
 import { useNavigation } from '@react-navigation/native';
 import { auth, firestore } from '../firebaseConfig';
 import { doc, updateDoc, arrayUnion, setDoc, getDoc } from 'firebase/firestore';
+import { useFonts } from 'expo-font';
+
+const [fontsLoaded] = useFonts({
+  'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+  'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+});
 
 const { width, height } = Dimensions.get('window');
 
@@ -259,6 +265,7 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
     backgroundColor: 'white',
+    fontFamily: 'Poppins-Regular',
   },
   car: {
     position: 'absolute',
@@ -296,7 +303,7 @@ const styles = StyleSheet.create({
   },
   gameOverText: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -311,7 +318,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   scoreboard: {
     position: 'absolute',
@@ -332,7 +339,7 @@ const styles = StyleSheet.create({
   scoreText: {
     color: 'white',
     fontSize: 22,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     textAlign: 'center',
   },
 });

@@ -5,23 +5,21 @@ import { BlurView } from 'expo-blur';
 
 const LandingScreen = ({ navigation }) => {
   const [fontsLoaded] = useFonts({
-    Poppins: require('../assets/fonts/Poppins-Regular.ttf'), // Replace with your font file path
+    Poppins: require('../assets/fonts/Poppins-Regular.ttf'), // Regular font
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'), // Bold font
   });
 
-  const [loading, setLoading] = useState(true); // State to manage loading animation
-  const spinValue = new Animated.Value(0); // Animation value for rotation
+  const [loading, setLoading] = useState(true);
+  const spinValue = new Animated.Value(0);
 
   useEffect(() => {
-    // Simulate font loading delay, remove this in production
     const timeout = setTimeout(() => {
       setLoading(false);
-    }, 3000); // Adjust the timeout duration as needed
-
+    }, 3000);
     return () => clearTimeout(timeout);
   }, []);
 
   useEffect(() => {
-    // Rotate animation for tire image
     Animated.loop(
       Animated.timing(spinValue, {
         toValue: 1,
@@ -42,7 +40,7 @@ const LandingScreen = ({ navigation }) => {
         <BlurView intensity={50} style={styles.blurContainer}>
           <View style={styles.container}>
             <Animated.Image
-              source={require('../assets/tire.png')} // Replace with your tire image source
+              source={require('../assets/tire.png')}
               style={[styles.loadingIcon, { transform: [{ rotate: spin }] }]}
             />
           </View>
@@ -62,13 +60,13 @@ const LandingScreen = ({ navigation }) => {
             style={styles.signInButton}
             onPress={() => navigation.navigate('Login')}
           >
-            <Text style={styles.buttonText}>Sign-in</Text>
+            <Text style={styles.buttonText}>LOGIN</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.signUpButton}
             onPress={() => navigation.navigate('Register')}
           >
-            <Text style={styles.buttonText}>Sign-up</Text>
+            <Text style={styles.buttonText}>REGISTER</Text>
           </TouchableOpacity>
         </View>
       </BlurView>
@@ -83,7 +81,7 @@ const styles = StyleSheet.create({
   },
   blurContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Layer color dodge effect simulation
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   container: {
     flex: 1,
@@ -104,7 +102,7 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     width: 200,
-    height: 50,
+    height: 55,
     backgroundColor: '#E0C55B',
     justifyContent: 'center',
     alignItems: 'center',
@@ -118,7 +116,7 @@ const styles = StyleSheet.create({
   },
   signUpButton: {
     width: 200,
-    height: 50,
+    height: 55,
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
@@ -132,11 +130,10 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'black',
     fontSize: 20,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins-Bold', // Use Poppins-Bold for bold text
   },
   loadingIcon: {
-    width: 80, // Adjust the width and height as needed
+    width: 80,
     height: 80,
     marginBottom: 20,
   },

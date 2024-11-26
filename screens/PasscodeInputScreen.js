@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Animated, Image, Dimensions } from 'react-native';
 import { firestore, auth } from '../firebaseConfig';
 import { doc, updateDoc } from 'firebase/firestore'; 
+import { useFonts } from 'expo-font';
 
 const { width } = Dimensions.get('window');
 
@@ -12,7 +13,10 @@ const PasscodeInputScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const maxDigits = 4; // The length of the passcode
-
+  const [fontsLoaded] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
   const handleNumberPress = (number) => {
     if (isConfirming) {
       if (confirmPasscode.length < maxDigits) {
@@ -150,10 +154,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFAE6',
   },
   logo: {
-    width: 200,
-    height: 200,
+    width: 150,
+    height: 150,
     borderRadius: 25,
-    top: 200,
+    top: 150,
   },
   passcodeBox: {
     width: '100%',
@@ -163,10 +167,11 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 20,
     alignItems: 'center',
-    marginTop: 250,
+    marginTop: 180,
   },
   title: {
     fontSize: 22,
+    fontFamily: 'Poppins-Bold',
     color: '#333',
     marginBottom: 10,
   },
@@ -197,7 +202,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 10,
+    marginVertical: 5,
     borderRadius: 100,
     backgroundColor: '#e0e0e0',
     shadowColor: '#000',
@@ -206,6 +211,7 @@ const styles = StyleSheet.create({
   },
   numberText: {
     fontSize: 24,
+    fontFamily: 'Poppins-Regular',
     color: '#333',
   },
   verifyButton: {
@@ -215,10 +221,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 20,
-    bottom: 100,
+    bottom: 80,
   },
   verifyButtonText: {
     fontSize: 18,
+    fontFamily: 'Poppins-Bold',
     color: '#000',
   },
   loadingContainer: {

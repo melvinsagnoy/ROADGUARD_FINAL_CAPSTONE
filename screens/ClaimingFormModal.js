@@ -6,7 +6,7 @@ import { ref, set, serverTimestamp, get } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 import { database } from '../firebaseConfig';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyACvMNE1lw18V00MT1wzRDW1vDlofnOZbw'; // Replace with your actual API key
+const GOOGLE_MAPS_API_KEY = 'AIzaSyAUxeeVAUr4zOsQmuUEUuTRcEjtXj8158w'; // Replace with your actual API key
 
 const ClaimingFormModal = ({ visible, onClose, reward }) => {
   const [fullName, setFullName] = useState('');

@@ -6,6 +6,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import CombinedModal from './CombinedModal'; // Import the CombinedModal component
 import PhoneNumberModal from './PhoneNumberModal'; // Import PhoneNumberModal
 import { doc, setDoc } from 'firebase/firestore';
+import { useFonts } from 'expo-font';
 
 const RegisterScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -19,6 +20,15 @@ const RegisterScreen = ({ navigation }) => {
   const [showPhoneNumberModal, setShowPhoneNumberModal] = useState(false); // Phone number modal visibility
   const [userEmail, setUserEmail] = useState(null);
   const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  const [fontsLoaded] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   const handleRegisterButtonPress = async () => {
     if (!email || !password || !confirmPassword) {
@@ -176,23 +186,11 @@ const RegisterScreen = ({ navigation }) => {
           onPress={handleRegisterButtonPress}
           disabled={loading}
         >
-          <Text style={styles.buttonText}>Sign Up</Text>
+          <Text style={styles.buttonText}>Register</Text>
         </TouchableOpacity>
-
-        <Text style={styles.orText}>or</Text>
-
-        {/* Google Sign In Button */}
-        <TouchableOpacity style={styles.googleSignIn}>
-          <Image 
-            source={require('../assets/google_logo.png')} // Make sure the path to your google_icon.png is correct
-            style={styles.googleIcon}
-          />
-          <Text style={styles.googleText}>Sign up with Google</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
           <Text style={styles.registerText}>
-            Already have an account? <Text style={styles.signIn}>Sign In</Text>
+            Already have an account? <Text style={styles.signIn}>Log In</Text>
           </Text>
         </TouchableOpacity>
       </View>
@@ -237,10 +235,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width: 200,
-    height: 200,
+    width: 150,
+    height: 150,
     borderRadius: 25,
-    top: 50,
+    top: 30,
   },
   registerContainer: {
     width: '100%',
@@ -250,13 +248,13 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 20,
     alignItems: 'center',
-    marginTop: 50,
+    marginTop: 20,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     color: '#3A3A3A',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   input: {
     width: '100%',
@@ -266,6 +264,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginVertical: 10,
     color: '#333',
+    fontFamily: 'Poppins-Regular',
   },
   passwordContainer: {
     width: '100%',
@@ -289,7 +288,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#000',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   agreementContainer: {
     flexDirection: 'row',
@@ -311,45 +310,22 @@ const styles = StyleSheet.create({
   },
   agreementText: {
     fontSize: 14,
+    fontFamily: 'Poppins-Regular',
     color: '#000',
   },
   link: {
-    color: '#F6EF00', // Color for the clickable Terms and Conditions/Privacy Policy
-    fontWeight: 'bold',
-  },
-  orText: {
-    marginVertical: 10,
-    color: '#000',
-  },
-  googleSignIn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderColor: '#E0E0E0',
-    borderWidth: 1,
-    borderRadius: 25,
-    height: 50,
-    width: 190,
-    marginVertical: 10,
-    backgroundColor: '#FFF',
-  },
-  googleIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 10,
-  },
-  googleText: {
-    fontSize: 16,
-    color: '#333',
+    color: '#F6EF00',
+    fontFamily: 'Poppins-Bold',
   },
   registerText: {
     marginTop: 20,
-    color: '#7C7A7A',
     fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: '#7C7A7A',
   },
   signIn: {
     color: '#F6EF00',
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
 });
 

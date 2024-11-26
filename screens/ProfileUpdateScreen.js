@@ -4,11 +4,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, firestore, storage } from '../firebaseConfig';
 import { doc, setDoc, updateDoc, getDoc } from 'firebase/firestore';
+import { useFonts } from 'expo-font';
 
 const ProfileUpdateScreen = ({ navigation }) => {
   const [displayName, setDisplayName] = useState('');
   const [imageUri, setImageUri] = useState('');
   const [newProfileImageUri, setNewProfileImageUri] = useState('');
+  
+  const [fontsLoaded] = useFonts({
+    'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
+  });
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -135,11 +141,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#545151', // Assuming this is your background color
+    fontFamily: 'Poppins-Regular',
     padding: 20,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
     color: '#FFF', // Assuming this is your text color
     marginBottom: 20,
   },
@@ -156,23 +163,28 @@ const styles = StyleSheet.create({
     borderColor: '#ccc', // Assuming this is your border color
   },
   input: {
-    width: '100%',
+    width: '80%',
     padding: 10,
     borderWidth: 1,
     borderColor: '#ddd', // Assuming this is your input border color
-    borderRadius: 5,
+    fontFamily: 'Poppins-Regular',
+    borderRadius: 15,
     marginBottom: 20,
     backgroundColor: '#fff', // Assuming this is your input background color
   },
   button: {
-    backgroundColor: '#E0C55B', // Assuming this is your button color
+    backgroundColor: '#F6EF00', // Assuming this is your button color
     padding: 15,
-    borderRadius: 5,
+    borderRadius: 25,
+    width: '50%',
     marginVertical: 10,
+    textAlign: 'center'
   },
   buttonText: {
     color: '#000',
     fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    textAlign: 'center'
   },
 });
 
