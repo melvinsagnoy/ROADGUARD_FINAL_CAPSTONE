@@ -126,7 +126,7 @@ const SubscriptionScreen = ({ navigation }) => {
   const handleProceedToPayment = async () => {
     setLoading(true);
     const amount = selectedOption === '1 month' ? 100 : selectedOption === '6 months' ? 500 : 1000;
-    const description = `${selectedOption} subscription`;
+    const description = `${selectedOption} subscriptio  n`;
     const remarks = 'Roadguard Subscription';
 
     const paymentLink = await createPaymentLink(amount, description, remarks);

@@ -24,6 +24,11 @@
         }
       }
     },
+    "backgroundFetch": {
+      "enabled": true,
+      "minimumInterval": 60, 
+      "taskName": "background-fetch"
+    },
     "ios": {
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show your position on the map.",

@@ -5,6 +5,8 @@ import { auth } from '../firebaseConfig';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Import icon library
 import { useFonts } from 'expo-font';
 
+
+
 const VerificationOptionsScreen = ({ navigation }) => {
   const [fontsLoaded] = useFonts({
     'Poppins-Regular': require('../assets/fonts/Poppins-Regular.ttf'),
@@ -52,6 +54,7 @@ const VerificationOptionsScreen = ({ navigation }) => {
       Alert.alert('An error occurred during fingerprint authentication.');
     }
   };
+  
 
   const handlePasscodeVerify = () => {
     navigation.navigate('PasscodeVerificationScreen'); // Navigate to passcode verification screen

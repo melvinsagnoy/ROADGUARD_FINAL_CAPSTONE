@@ -266,7 +266,7 @@ const fetchUserData = async (email) => {
   }
 };
 
-  const fetchAllPosts = async () => {
+const fetchAllPosts = async () => {
   try {
     const postsRef = ref(database, 'posts');
     onValue(postsRef, async (snapshot) => {
@@ -277,17 +277,19 @@ const fetchUserData = async (email) => {
             const post = postsData[key];
             let address = 'Location not available';
             if (post.location) {
-              address = await fetchAddress(post.location.latitude, post.location.longitude);
+              address = await fetchAddress(
+                post.location.latitude,
+                post.location.longitude
+              );
             }
             return {
               id: key,
               ...post,
-              address, // Add the fetched address to the post data
+              address,
             };
           })
         );
 
-        // Sort posts by 'createdAt' in descending order (latest posts first)
         postsArray.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         setPosts(postsArray);
@@ -483,9 +485,9 @@ const renderNewsFeed = () => {
       <View style={styles.feedHeader}>
       {userData && (
           <Image
-            source={{ uri: userData.photoURL || 'https://via.placeholder.com/150' }}
-            style={styles.profileIconImage}
-          />
+          source={{ uri: post.photoURL || 'https://via.placeholder.com/150' }}
+          style={styles.profileIconImage}
+        />
         )}
         <View style={styles.feedHeaderText}>
           <Text style={[styles.feedAuthor, { color: theme.text }]}>

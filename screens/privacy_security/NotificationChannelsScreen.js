@@ -2,31 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { database, auth } from '../../firebaseConfig';
-import { ref, update, onValue } from 'firebase/database';
-
-function sanitizeEmail(email) {
-  return email ? email.replace(/[.#$\/\[\]]/g, '_') : '';
-}
+import { ref, update } from 'firebase/database';
 
 const NotificationChannelsScreen = ({ onClose }) => {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [isEnabled, setIsEnabled] = useState(true);
 
-  useEffect(() => {
+  const toggleSwitch = () => {
+    const newValue = !isEnabled;
+    setIsEnabled(newValue);
+  
+    // Ensure the user is authenticated and handle any potential errors
     const currentUser = auth.currentUser;
-    if (currentUser) {
-      const userRef = ref(database, `users/${sanitizeEmail(currentUser.email)}/notificationPreferences`);
-      onValue(userRef, (snapshot) => {
-        const preferences = snapshot.val();
-        setNotificationsEnabled(preferences?.notificationsEnabled ?? true); // Default to true if not set
-      });
-    }
-  }, []);
-
-  const savePreferences = (value) => {
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      const userRef = ref(database, `users/${sanitizeEmail(currentUser.email)}/notificationPreferences`);
-      update(userRef, { notificationsEnabled: value });
+    if (currentUser && currentUser.email) {
+      const sanitizedEmail = currentUser.email.replace(/[.#$\/\[\]]/g, '_');
+      const userRef = ref(database, `users/${sanitizedEmail}/notificationPreferences`);
+  
+      // Update the notification preference in Firebase
+      update(userRef, { notificationsEnabled: newValue })
+        .then(() => {
+          console.log("Notification preferences updated successfully.");
+        })
+        .catch((error) => {
+          console.error("Error updating notification preferences: ", error);
+        });
+    } else {
+      console.warn("User is not authenticated or email is unavailable.");
     }
   };
 
@@ -36,17 +36,18 @@ const NotificationChannelsScreen = ({ onClose }) => {
       <View style={styles.channelRow}>
         <Text style={styles.channelText}>Notifications</Text>
         <Switch
-          value={notificationsEnabled}
-          onValueChange={(value) => {
-            setNotificationsEnabled(value);
-            savePreferences(value);
-          }}
-          trackColor={{ true: '#f0c943', false: '#ddd' }}
-          thumbColor={notificationsEnabled ? '#f6ef00' : '#888'}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={isEnabled ? '#f5dd4b' : '#f4f3f4'}
+          ios_backgroundColor="#3e3e3e"
+          onValueChange={toggleSwitch} // This passes the new value directly
+          value={isEnabled}
         />
       </View>
       <TouchableOpacity onPress={onClose}>
-        <LinearGradient colors={['#5a98d2', '#69c0f7']} style={styles.closeButton}>
+        <LinearGradient
+          colors={['#5a98d2', '#69c0f7']}
+          style={styles.closeButton}
+        >
           <Text style={styles.closeButtonText}>Close</Text>
         </LinearGradient>
       </TouchableOpacity>

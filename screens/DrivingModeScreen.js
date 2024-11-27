@@ -731,7 +731,7 @@ const DrivingModeScreen = ({ navigation, route }) => {
 
   const alertHazard = (hazard, distanceInMeters) => {
     setCurrentHazard(hazard);
-    const message = `Pagbantay brats, kay naay ${hazard.title} sa unahan, ${distanceInMeters} metros nalang. Ayaw'g kompyansa brats!`;
+    const message = `Be careful, there's a ${hazard.title} ahead, just ${distanceInMeters} meters away. Stay alert!`;
   
     if (isSpeechEnabled) {
       Speech.speak(message, {
