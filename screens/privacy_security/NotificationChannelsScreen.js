@@ -4,20 +4,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { database, auth } from '../../firebaseConfig';
 import { ref, update } from 'firebase/database';
 
-const NotificationChannelsScreen = ({ onClose }) => {
-  const [isEnabled, setIsEnabled] = useState(true);
-
+const NotificationChannelsScreen = ({ onClose, notificationsEnabled, setNotificationsEnabled }) => {
   const toggleSwitch = () => {
-    const newValue = !isEnabled;
-    setIsEnabled(newValue);
-  
-    // Ensure the user is authenticated and handle any potential errors
+    const newValue = !notificationsEnabled;
+    setNotificationsEnabled(newValue);
+
     const currentUser = auth.currentUser;
     if (currentUser && currentUser.email) {
       const sanitizedEmail = currentUser.email.replace(/[.#$\/\[\]]/g, '_');
       const userRef = ref(database, `users/${sanitizedEmail}/notificationPreferences`);
-  
-      // Update the notification preference in Firebase
+
       update(userRef, { notificationsEnabled: newValue })
         .then(() => {
           console.log("Notification preferences updated successfully.");
@@ -34,13 +30,13 @@ const NotificationChannelsScreen = ({ onClose }) => {
     <View style={styles.modalContent}>
       <Text style={styles.title}>Notification Settings</Text>
       <View style={styles.channelRow}>
-        <Text style={styles.channelText}>Notifications</Text>
+        <Text style={styles.channelText}>Enable Notifications</Text>
         <Switch
           trackColor={{ false: '#767577', true: '#81b0ff' }}
-          thumbColor={isEnabled ? '#f5dd4b' : '#f4f3f4'}
+          thumbColor={notificationsEnabled ? '#f5dd4b' : '#f4f3f4'}
           ios_backgroundColor="#3e3e3e"
-          onValueChange={toggleSwitch} // This passes the new value directly
-          value={isEnabled}
+          onValueChange={toggleSwitch}
+          value={notificationsEnabled}
         />
       </View>
       <TouchableOpacity onPress={onClose}>

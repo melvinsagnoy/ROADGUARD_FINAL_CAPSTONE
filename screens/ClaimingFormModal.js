@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, TextInput, StyleSheet, Alert, Image, useColorScheme } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, TextInput, StyleSheet, Alert, Image, useColorScheme, Switch } from 'react-native';
 import * as Location from 'expo-location';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { ref, set, serverTimestamp, get } from 'firebase/database';
@@ -7,7 +7,7 @@ import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { database } from '../firebaseConfig';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyAUxeeVAUr4zOsQmuUEUuTRcEjtXj8158w'; // Replace with your actual API key
+const GOOGLE_MAPS_API_KEY = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0'; // Replace with your actual API key
 
 const ClaimingFormModal = ({ visible, onClose, reward }) => {
   const [fullName, setFullName] = useState('');
@@ -95,19 +95,19 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
   const getCurrentLocation = async () => {
     try {
       setLoading(true);
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Permission to access location was denied');
+        Alert.alert('Permission Denied', 'Location access was denied.');
         setLoading(false);
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({});
-      let { latitude, longitude } = location.coords;
-      let response = await fetch(
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+      const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_API_KEY}`
       );
-      let data = await response.json();
+      const data = await response.json();
       if (data.results.length > 0) {
         setAddress(data.results[0].formatted_address);
       } else {
@@ -115,7 +115,7 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
       }
       setLoading(false);
     } catch (error) {
-      Alert.alert('Error', 'Unable to retrieve location');
+      Alert.alert('Error', 'Failed to retrieve location.');
       setLoading(false);
     }
   };
@@ -126,31 +126,21 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
         const rewardRef = ref(database, `rewards/${reward.rewardId}`);
         const snapshot = await get(rewardRef);
         if (snapshot.exists()) {
-          const rewardData = snapshot.val();
-          setRewardPoints(rewardData.pointsRequired || 0);
-        } else {
-          setRewardPoints(0);
+          setRewardPoints(snapshot.val().pointsRequired || 0);
         }
-      } catch (error) {
-        Alert.alert('Error', `Unable to fetch reward points: ${error.message}`);
+      } catch {
         setRewardPoints(0);
       }
-    } else {
-      setRewardPoints(0);
     }
   };
 
   const handleClaim = async () => {
-    if (fullName.trim() === '' || phoneNumber.trim() === '' || address.trim() === '') {
-      Alert.alert('Error', 'Please provide full name, phone number, and address.');
-      return;
-    }
-    if (phoneNumber.length !== 11) {
-      Alert.alert('Error', 'Phone number must be exactly 11 digits.');
+    if (!fullName.trim() || !phoneNumber.trim() || !address.trim()) {
+      Alert.alert('Error', 'All fields are required.');
       return;
     }
 
-    const sanitizedEmail = sanitizeEmail(currentUser?.email || 'unknown@domain.com');
+    const sanitizedEmail = currentUser?.email.replace(/[@.]/g, '_');
     const claimRef = ref(database, `claim_reward/${sanitizedEmail}`);
     const userRef = ref(database, `users/${sanitizedEmail}`);
 
@@ -158,32 +148,26 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
       setLoading(true);
 
       if (totalPoints < rewardPoints) {
-        Alert.alert('Error', 'Not enough points to claim this reward.');
-        setLoading(false);
+        Alert.alert('Error', 'Insufficient points.');
         return;
       }
 
       const newPoints = totalPoints - rewardPoints;
-
-      // Submit claim and update points
       await set(claimRef, {
         fullName,
         phoneNumber,
         address,
-        email: currentUser?.email || 'Unknown',
+        email: currentUser?.email,
         timestamp: serverTimestamp(),
         status: 'pending',
         rewardName: reward?.rewardName || 'No Name',
         rewardImageUrl: reward?.imageUrl || '',
         pointsRequired: rewardPoints,
       });
-
       await set(userRef, { points: newPoints });
 
-      Alert.alert('Success', 'Claim submitted successfully.');
+      Alert.alert('Success', 'Claim submitted.');
       onClose();
-    } catch (error) {
-      Alert.alert('Error', `Unable to submit claim: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -240,14 +224,17 @@ const ClaimingFormModal = ({ visible, onClose, reward }) => {
             keyboardType="phone-pad"
           />
 
+<Switch
+            value={usingCurrentLocation}
+            onValueChange={() => setUsingCurrentLocation(!usingCurrentLocation)}
+          />
+          <Text>{usingCurrentLocation ? 'Using Current Location' : 'Manual Address'}</Text>
+
           <TextInput
-            style={[styles.input, { borderColor: currentTheme.inputBorder, color: currentTheme.text }]}
-            placeholder={usingCurrentLocation ? 'Address (Auto-filled)' : 'Enter your address'}
-            placeholderTextColor={isDarkMode ? '#888888' : '#AAAAAA'}
+            style={styles.input}
+            placeholder="Address"
             value={address}
-            onChangeText={(text) => {
-              if (!usingCurrentLocation) setAddress(text);
-            }}
+            onChangeText={(text) => !usingCurrentLocation && setAddress(text)}
             editable={!usingCurrentLocation}
           />
 

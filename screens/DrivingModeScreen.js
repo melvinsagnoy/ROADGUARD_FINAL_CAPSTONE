@@ -354,6 +354,8 @@ const DrivingModeScreen = ({ navigation, route }) => {
       .start();
   };
 
+  
+
 
   useEffect(() => {
     const loadSpeechSetting = async () => {
@@ -736,7 +738,7 @@ const DrivingModeScreen = ({ navigation, route }) => {
     if (isSpeechEnabled) {
       Speech.speak(message, {
         language: 'fil-PH',
-        pitch: 0.6,
+        pitch: 0.5,
         rate: 1,
       });
     }
@@ -745,63 +747,61 @@ const DrivingModeScreen = ({ navigation, route }) => {
   
     if (isHazardOnRoute(hazard, routeCoordinates)) {
       Alert.alert(
-        'WARNENG!',
+        'WARNING!',
         message,
         [
           {
-            text: 'Proceed', 
+            text: 'Proceed',
             onPress: () => {
               if (isSpeechEnabled) {
-                Speech.speak('Proceeding on the current route.', {
+                Speech.speak('Heading to the current route.', {
                   language: 'fil-PH',
                   pitch: 0.6,
                   rate: 1,
                 });
               }
-            }
+            },
           },
-          { text: 'Alternate Route', onPress: () => fetchAlternateRoute(currentLocation) },
+          {
+            text: 'Alternate Route',
+            onPress: () => fetchAlternateRoute(currentLocation), // Call fetchAlternateRoute
+          },
         ],
         { cancelable: false }
       );
     }
   };
   
+  
 
   const fetchAlternateRoute = async (currentLocation) => {
-    const apiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0'; // Replace with your actual Google Maps API key
+    const apiKey = 'AIzaSyDZShgCYNWnTIkKJFRGsqY8GZDax9Ykqo0';
     try {
       const response = await axios.get(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&mode=driving&alternatives=true&avoid=highways&key=${apiKey}`
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${currentLocation.latitude},${currentLocation.longitude}&destination=${destinationCoords.latitude},${destinationCoords.longitude}&mode=driving&alternatives=true&key=${apiKey}`
       );
   
       if (response.data.status === 'OK') {
-        const localRoute = response.data.routes.find(route => !/highway/i.test(route.summary));
-  
-        if (localRoute) {
-          const points = localRoute.overview_polyline.points;
-          setRouteCoordinates(decodePolyline(points));
-          setDistance(localRoute.legs[0].distance.text);
-          setDuration(localRoute.legs[0].duration.text);
-  
-          if (isSpeechEnabled) {
-            Speech.speak('Fetching an alternate route using local streets.', {
-              language: 'fil-PH',
-              pitch: 0.6,
-              rate: 1,
-            });
-          }
-        } else {
-          Alert.alert('No Alternate Route', 'There are no alternate routes available that avoid highways.');
-        }
+        console.log(response.data.routes); // Log the routes for debugging
+        const routes = response.data.routes;
+        setAlternateRoutes(
+          routes.map((route, index) => ({
+            id: index,
+            polyline: decodePolyline(route.overview_polyline.points),
+            summary: route.summary || 'Unnamed Route',
+            distance: route.legs[0].distance.text,
+            duration: route.legs[0].duration.text,
+          }))
+        );
       } else {
-        Alert.alert('Error', `Unable to fetch alternate route: ${response.data.status}`);
+        Alert.alert('Error', `Unable to fetch alternate routes: ${response.data.status}`);
       }
     } catch (error) {
-      console.error('Error fetching alternate route:', error.response ? error.response.data : error.message);
-      Alert.alert('Network Error', 'Unable to fetch alternate route. Please check your network connection or API key.');
+      console.error('Error fetching alternate routes:', error.response ? error.response.data : error.message);
+      Alert.alert('Network Error', 'Unable to fetch alternate routes. Please check your network connection or API key.');
     }
   };
+  
 
   const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
     const R = 6371; // Radius of the earth in km
@@ -868,8 +868,47 @@ console.log('Cleaned:', cleaned);
     return cleaned;
   };
   
+  const [alternateRoutes, setAlternateRoutes] = useState([]);
+const [selectedRouteId, setSelectedRouteId] = useState(null);
 
+
+const RouteSelection = ({ routes, onSelect }) => {
+  return (
+    <View style={styles.routeSelectionContainer}>
+      {routes.map((route) => (
+        <TouchableOpacity
+          key={route.id}
+          style={[
+            styles.routeOption,
+            route.id === selectedRouteId ? styles.selectedRoute : {},
+          ]}
+          onPress={() => {
+            console.log(`Selected route: ${route.summary}`); // Log the selected route
+            setSelectedRouteId(route.id);
+            onSelect(route);
+          }}
+        >
+          <Text style={styles.routeSummary}>{route.summary}</Text>
+          <Text style={styles.routeDetails}>
+            {route.distance} - {route.duration}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+};
   
+
+{alternateRoutes.length > 0 && (
+  <RouteSelection
+    routes={alternateRoutes}
+    onSelect={(route) => {
+      setRouteCoordinates(route.polyline);
+      setDistance(route.distance);
+      setDuration(route.duration);
+    }}
+  />
+)}
 
   const decodePolyline = (encoded) => {
     let points = [];
@@ -986,7 +1025,16 @@ console.log('Cleaned:', cleaned);
         {routeCoordinates.length > 0 && (
           <Polyline coordinates={routeCoordinates} strokeWidth={5} strokeColor="#0000FF" />
         )}
-
+        
+        {/* Alternate routes */}
+  {alternateRoutes.map((route) => (
+    <Polyline
+      key={route.id}
+      coordinates={route.polyline}
+      strokeWidth={4}
+      strokeColor={route.id === selectedRouteId ? '#FF0000' : '#00FF00'}
+    />
+  ))}
         <Marker.Animated coordinate={markerPosition} />
 
         {hazards.map((hazard, index) => (
@@ -1265,6 +1313,35 @@ photo: {
     width: 30,
     height: 30,
   },
+
+  routeSelectionContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 10,
+    right: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 10,
+    elevation: 5,
+  },
+  routeOption: {
+    padding: 10,
+    marginBottom: 5,
+    borderRadius: 5,
+    backgroundColor: '#f1f1f1',
+  },
+  selectedRoute: {
+    backgroundColor: '#d1e7ff',
+  },
+  routeSummary: {
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  routeDetails: {
+    color: '#666',
+  },
+
+  
 });
 
 export default DrivingModeScreen;

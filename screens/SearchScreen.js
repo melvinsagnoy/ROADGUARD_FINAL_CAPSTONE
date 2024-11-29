@@ -163,12 +163,8 @@ const colorScheme = useColorScheme();
           </View>
         </View>
       </Modal>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
 
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.text }]}>
-        <Image source={require('../assets/icon.png')} style={styles.logo} />
-        <Text style={[styles.headerTitle, { color: theme.text }]}>RoadGuard</Text>
-      </View>
 
       {/* Rank Container */}
       <View style={[styles.rankContainer, { backgroundColor: theme.primary, shadowColor: theme.text }]}>
@@ -185,9 +181,7 @@ const colorScheme = useColorScheme();
           <View style={styles.pointsContainer}>
             <Text style={[styles.pointsText, { color: theme.text }]}>{userPoints} points</Text>
             <Text style={[styles.rankDescription, { color: theme.text }]}>{rankDescription}</Text>
-            <TouchableOpacity onPress={handleViewLeaderboards}>
-              <Text style={[styles.viewLeaderboard, { color: theme.primary }]}>View leaderboards →</Text>
-            </TouchableOpacity>
+           
           </View>
         </View>
       </View>
@@ -201,6 +195,7 @@ const colorScheme = useColorScheme();
           {"\n"}- Swipe to move the car left or right.
           {"\n"}- Avoid obstacles on the road.
           {"\n"}- Collect points by passing through gaps.
+          
         </Text>
         <TouchableOpacity
           style={[styles.playButton, isHovered && styles.playButtonHover, { backgroundColor: theme.primary }]}
@@ -211,7 +206,7 @@ const colorScheme = useColorScheme();
           <Text style={[styles.playButtonText, { color: theme.text }]}>{isHovered ? 'Play' : 'Play'}</Text>
         </TouchableOpacity>
       </View>
-
+    </ScrollView>
       <NavBar navigation={navigation} />
     </View>
   );
@@ -243,6 +238,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Bold',
   },
   rankContainer: {
+    top: 80,
     padding: 20,
     borderRadius: 10,
     marginVertical: 5,
@@ -298,6 +294,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   gameContainer: {
+    top: 80,
     padding: 10,
     borderRadius: 10,
     alignItems: 'center',
@@ -308,6 +305,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     width: '90%',
     alignSelf: 'center',
+    height: 480,
   },
   thumbnail: {
     width: 150,
@@ -337,7 +335,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#C0A346',
   },
   playButtonText: {
-    fontSize: 16,
+    fontSize: 20,
     fontFamily: 'Poppins-Bold',
   },
   modalOverlay: {

@@ -1,21 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, ImageBackground, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  ImageBackground,
+  Animated,
+  Alert,
+} from 'react-native';
+import NetInfo from '@react-native-community/netinfo'; // Import NetInfo
 import { useFonts } from 'expo-font';
 import { BlurView } from 'expo-blur';
 
 const LandingScreen = ({ navigation }) => {
   const [fontsLoaded] = useFonts({
-    Poppins: require('../assets/fonts/Poppins-Regular.ttf'), // Regular font
-    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'), // Bold font
+    Poppins: require('../assets/fonts/Poppins-Regular.ttf'),
+    'Poppins-Bold': require('../assets/fonts/Poppins-Bold.ttf'),
   });
 
   const [loading, setLoading] = useState(true);
+  const [internetAvailable, setInternetAvailable] = useState(true); // Track internet status
   const spinValue = new Animated.Value(0);
 
   useEffect(() => {
+    const checkInternet = async () => {
+      const state = await NetInfo.fetch();
+      if (!state.isConnected) {
+        setInternetAvailable(false);
+        Alert.alert('No Internet', 'Check Internet connection, Try again.', [
+          { text: 'Retry', onPress: checkInternet },
+        ]);
+      } else {
+        setInternetAvailable(true);
+      }
+    };
+
+    checkInternet();
+
     const timeout = setTimeout(() => {
       setLoading(false);
     }, 3000);
+
     return () => clearTimeout(timeout);
   }, []);
 
@@ -34,7 +60,7 @@ const LandingScreen = ({ navigation }) => {
     outputRange: ['0deg', '360deg'],
   });
 
-  if (!fontsLoaded || loading) {
+  if (!fontsLoaded || loading || !internetAvailable) {
     return (
       <ImageBackground source={require('../assets/background.jpg')} style={styles.background}>
         <BlurView intensity={50} style={styles.blurContainer}>
@@ -43,6 +69,9 @@ const LandingScreen = ({ navigation }) => {
               source={require('../assets/tire.png')}
               style={[styles.loadingIcon, { transform: [{ rotate: spin }] }]}
             />
+            {!internetAvailable && (
+              <Text style={styles.errorText}>No Internet Connection</Text>
+            )}
           </View>
         </BlurView>
       </ImageBackground>
@@ -130,12 +159,18 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'black',
     fontSize: 20,
-    fontFamily: 'Poppins-Bold', // Use Poppins-Bold for bold text
+    fontFamily: 'Poppins-Bold',
   },
   loadingIcon: {
     width: 80,
     height: 80,
     marginBottom: 20,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 20,
   },
 });
 

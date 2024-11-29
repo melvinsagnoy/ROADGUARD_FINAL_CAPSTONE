@@ -285,14 +285,19 @@ const updatePhoneNumber = async () => {
   };
 
   const handleRedeem = (rewardId) => {
-  const reward = rewards.find(item => item.id === rewardId);
-  if (reward && points >= reward.pointsRequired) {
-    setSelectedReward(reward); // Set the selected reward
-    setClaimingFormModalVisible(true);
-  } else {
-    Alert.alert('Insufficient Points', 'You do not have enough points to redeem this reward.');
-  }
-};
+    console.log('Reward ID:', rewardId); // Check if it's missing or undefined
+    if (!rewardId) {
+      Alert.alert('Error', 'Reward ID is missing');
+      return;
+    }
+    const reward = rewards.find(item => item.id === rewardId);
+    if (reward && points >= reward.pointsRequired) {
+      setSelectedReward(reward); // Set the selected reward
+      setClaimingFormModalVisible(true);
+    } else {
+      Alert.alert('Insufficient Points', 'You do not have enough points to redeem this reward.');
+    }
+  };
 
 const closeClaimingFormModal = () => {
   setClaimingFormModalVisible(false);
@@ -634,6 +639,7 @@ const openChatModal = (claimId) => {
         </View>
       </Modal>
   
+
       {/* Rewards Modal */}
       <Modal animationType="slide" transparent={true} visible={rewardsModalVisible} onRequestClose={() => setRewardsModalVisible(false)}>
         <View style={styles.modalContainer}>
@@ -688,13 +694,7 @@ const openChatModal = (claimId) => {
               <Text style={styles.redeemedRewardText}>
                 <Text style={{ fontWeight: 'bold' }}>Redeemed At:</Text> {new Date(item.timestamp).toLocaleString()}
               </Text>
-              <TouchableOpacity
-                  style={styles.chatIcon}
-                  onPress={() => openChatModal(item.id)}
-                >
-                  <FontAwesome name="comment" size={24} color="#007AFF" />
-                  <Text style={styles.chatIconText}>Chat</Text>
-                </TouchableOpacity>
+             
             </View>
             
           )}
@@ -720,12 +720,7 @@ const openChatModal = (claimId) => {
         onClaim={handleClaimReward}
       />
   
-  {/* Chat Modal */}
-  <ChatModal
-        visible={chatModalVisible}
-        onClose={() => setChatModalVisible(false)}
-        claimId={selectedClaimId}
-      />
+
 
       {/* Navigation Bar */}
       <NavBar navigation={navigation} isProfileComplete={isProfileComplete} />
@@ -962,6 +957,7 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: '#FFF',
     fontSize: 16,
+    fontFamily: 'Poppins-Regular',
   },
   imageButton: {
   backgroundColor: '#4CAF50',
@@ -975,6 +971,7 @@ const styles = StyleSheet.create({
 imageButtonText: {
   color: '#FFF',
   fontSize: 16,
+  fontFamily: 'Poppins-Regular',
 },
 phoneNumber: {
   fontSize: 16,

@@ -56,50 +56,23 @@ const PrivacySecurityScreen = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={[styles.title, { color: currentTheme.text }]}>Privacy & Security</Text>
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: currentTheme.sectionTitle }]}>Profile Privacy</Text>
-          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Navigate to profile privacy settings */}}>
-            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Profile Visibility</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Navigate to location sharing settings */}}>
-            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Location Sharing</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Navigate to data collection preferences */}}>
-            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Data Collection Preferences</Text>
-          </TouchableOpacity>
-        </View>
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: currentTheme.sectionTitle }]}>Security Settings</Text>
           <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => navigation.navigate('ChangePasscode')}>
             <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Change Passcode</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Toggle two-factor authentication */}}>
-            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Two-Factor Authentication</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Navigate to security questions */}}>
-            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Security Questions</Text>
-          </TouchableOpacity>
+          
         </View>
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: currentTheme.sectionTitle }]}>Notifications & Alerts</Text>
-          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Navigate to alert preferences */}}>
-            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Alert Preferences</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => setNotificationModalVisible(true)}>
-            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Notification Channels</Text>
-          </TouchableOpacity>
-        </View>
+        
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: currentTheme.sectionTitle }]}>Support</Text>
           <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => openModal('report')}>
             <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Report Issues or Feedback</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.option, { backgroundColor: currentTheme.optionBackground, borderColor: currentTheme.borderColor }]} onPress={() => {/* Show contact details */}}>
-            <Text style={[styles.optionText, { color: currentTheme.optionText }]}>Contact Support</Text>
-          </TouchableOpacity>
+
         </View>
 
         <TouchableOpacity style={[styles.backButton, { backgroundColor: currentTheme.backButtonBackground }]} onPress={() => navigation.goBack()}>

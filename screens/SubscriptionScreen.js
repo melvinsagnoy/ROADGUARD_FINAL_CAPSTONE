@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert, ActivityIndicator, Image, useColorScheme  } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert, ActivityIndicator, Image, useColorScheme, ScrollView  } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { database } from '../firebaseConfig'; // Import the properly initialized database
-import { ref, get, set } from 'firebase/database'; // Import Firebase Realtime Database functions
+import { ref, get, set, update, push } from 'firebase/database'; // Import Firebase Realtime Database functions
 import { getAuth, onAuthStateChanged } from 'firebase/auth'; // Import Firebase Authentication functions
 
 const SubscriptionScreen = ({ navigation }) => {
@@ -14,6 +14,7 @@ const SubscriptionScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false); // For handling loading states
   const [userId, setUserId] = useState(null); // Store the authenticated user's ID
   const [subscription, setSubscription] = useState(null); // State to store subscription details
+  const [subscriptionHistory, setSubscriptionHistory] = useState([]); // Store subscription history
 
 
   // Detect system color scheme
@@ -69,15 +70,78 @@ const SubscriptionScreen = ({ navigation }) => {
     try {
       const subscriptionRef = ref(database, `/subscriptions/${uid}`);
       const snapshot = await get(subscriptionRef);
-
+  
       if (snapshot.exists()) {
         const userSubscription = snapshot.val();
-        setSubscription(userSubscription); // Set the subscription details to state
+  
+        // If active is true, set the subscription; otherwise, clear it
+        if (userSubscription.active) {
+          setSubscription(userSubscription); // Set the active subscription
+        } else {
+          setSubscription(null); // Allow user to subscribe again
+        }
       } else {
-        setSubscription(null); // No subscription exists
+        setSubscription(null); // No subscription exists, allow subscribing
       }
+      await fetchSubscriptionHistory(uid); // Fetch subscription history
     } catch (error) {
       console.error('Error fetching subscription:', error);
+    }
+  };
+
+  const fetchSubscriptionHistory = async (uid) => {
+    try {
+      const historyRef = ref(database, `/subscriptions_history/${uid}`);
+      const snapshot = await get(historyRef);
+  
+      if (snapshot.exists()) {
+        const historyData = snapshot.val();
+        const allHistory = Object.values(historyData);
+        setSubscriptionHistory(allHistory); // Set the subscription history
+      } else {
+        setSubscriptionHistory([]); // No history
+      }
+    } catch (error) {
+      console.error('Error fetching subscription history:', error);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+  
+    if (!currentUser) {
+      Alert.alert('Error', 'User not logged in');
+      return;
+    }
+  
+    try {
+      const subscriptionRef = ref(database, `/subscriptions/${currentUser.uid}`);
+      const snapshot = await get(subscriptionRef);
+  
+      if (snapshot.exists()) {
+        const currentSubscription = snapshot.val();
+  
+        // Move the current subscription to history
+        const historyRef = ref(database, `/subscriptions_history/${currentUser.uid}`);
+        const newHistoryEntry = push(historyRef);
+        await set(newHistoryEntry, {
+          ...currentSubscription,
+          active: false, // Mark as inactive in history
+        });
+  
+        // Clear the active subscription
+        await set(subscriptionRef, null);
+  
+        Alert.alert('Subscription Cancelled', 'Your subscription has been successfully cancelled.');
+        setSubscription(null); // Clear the subscription in state
+        await fetchSubscriptionHistory(currentUser.uid); // Refresh subscription history
+      } else {
+        Alert.alert('No Active Subscription', 'You don’t have an active subscription to cancel.');
+      }
+    } catch (error) {
+      console.error('Error cancelling subscription:', error);
+      Alert.alert('Error', 'Failed to cancel subscription. Please try again.');
     }
   };
 
@@ -194,7 +258,9 @@ const SubscriptionScreen = ({ navigation }) => {
   };
 
   return (
+    
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <FontAwesome name="arrow-left" size={24} color={theme.text} />
@@ -220,6 +286,10 @@ const SubscriptionScreen = ({ navigation }) => {
           <Text style={[styles.subscriptionDetails, { color: theme.text }]}>Start Date: {subscription.startDate}</Text>
           <Text style={[styles.subscriptionDetails, { color: theme.text }]}>End Date: {subscription.endDate}</Text>
           <Text style={[styles.subscriptionDetails, { color: theme.text }]}>Status: {subscription.active ? 'Active' : 'Inactive'}</Text>
+
+          <TouchableOpacity onPress={handleCancelSubscription}>
+            <Text style={[styles.cancelButton, { color: theme.cancelText }]}>Cancel Subscription</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <View style={styles.optionsContainer}>
@@ -248,6 +318,29 @@ const SubscriptionScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       )}
+
+
+      {/* Display subscription history */}
+      <Text style={[styles.title, { color: theme.headerText }]}>Subscription History</Text>
+{subscriptionHistory.length > 0 ? (
+  <View style={[styles.subscriptionContainer, { backgroundColor: theme.subscriptionBackground }]}>
+    {subscriptionHistory.map((history, index) => (
+      <View key={index} style={{ marginBottom: 10 }}>
+        <Text style={[styles.subscriptionDetails, { color: theme.text }]}>
+          {history.duration} for {history.amount}
+        </Text>
+        <Text style={[styles.subscriptionDetails, { color: theme.text }]}>Start Date: {history.startDate}</Text>
+        <Text style={[styles.subscriptionDetails, { color: theme.text }]}>End Date: {history.endDate}</Text>
+        <Text style={[styles.subscriptionDetails, { color: theme.text }]}>
+          Status: {history.active ? 'Active' : 'Inactive'}
+        </Text>
+      </View>
+    ))}
+  </View>
+) : (
+  <Text style={[styles.subtitle, { color: theme.text }]}>No subscription history available</Text>
+)}
+</ScrollView>
 
       <Modal animationType="slide" transparent visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
         <View style={[styles.modalContainer, { backgroundColor: theme.modalBackground }]}>

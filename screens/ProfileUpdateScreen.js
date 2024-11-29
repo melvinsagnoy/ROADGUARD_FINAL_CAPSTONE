@@ -178,7 +178,8 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     width: '50%',
     marginVertical: 10,
-    textAlign: 'center'
+    textAlign: 'center',
+    fontFamily: 'Poppins-Regular',
   },
   buttonText: {
     color: '#000',
